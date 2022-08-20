@@ -10,7 +10,18 @@ With this tab, user can provide a set of points to plan a go-through trajectory 
 ![plugin](https://user-images.githubusercontent.com/72239958/185739767-5041dca0-04c3-4a65-ba74-3a68cf683097.gif)
 
 ## Note
-Currently, only the branch "melodic" is implemented. The main branch just takes a place for later implementation. 
+Currently, only the branch "melodic" is implemented. The main branch just takes a place for later implementation.
+
+## Refactor and Implementation
+| File                                                                  | Plugin          | Class    | Comment                                                                                                    |
+|-----------------------------------------------------------------------|-----------------|----------|------------------------------------------------------------------------------------------------------------|
+| motion_planning_display.h motion_planning_display.cpp                 | motion_planning | refactor | added visualize function for waypoints                                                                     |
+| motion_planning_frame.h motion_planning_frame.cpp                     | motion_planning | refactor | forward declaration of tab waypoints added signal callback of tab waypoints overrided computeCartesianPlan |
+| motion_planning_frame_planning.cpp                                    | motion_planning | refactor | overrided computeCartesianPlan                                                                             |
+| CMakeLists.txt                                                        | motion_planning | refactor | new file's manifest                                                                                        |
+| motion_planning_frame_waypoints.h motion_planning_frame_waypoints.cpp | motion_planning | new      | properties and behaviors of widgets of tab waypoints ux logic                                              |
+| motion_planning_rviz_plugin_frame_waypoints.ui                        | motion_planning | new      | ui from QT Designer                                                                                        |
+| whi_logo.png                                                          | motion_planning | new      | logo image                                                                                                 |
 
 ## Build
 ### MoveIt intalled from source
@@ -36,7 +47,10 @@ or
 ```
 catkin_make
 ```
-depends on your environment.
+depends on your environment. And do not forget to source your workspace
+```
+source <your_workspace>/devel/setup.bash
+```
 
 ## Usage
 Once the build is finished, the tab "Waypoints" will be loaded following the "Planning" while running the MoveIt launch file. Let's take the panda_moveit_config as an example:
