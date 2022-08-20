@@ -115,7 +115,7 @@ void MotionPlanningFrameWaypointsWidget::executeButtonClicked()
 					
 					do
 					{					
-						std::this_thread::sleep_for(std::chrono::milliseconds(400));
+						std::this_thread::sleep_for(std::chrono::milliseconds(500));
 					} while (ui_->stop_button->isEnabled());
 				}
 			} }.detach();
