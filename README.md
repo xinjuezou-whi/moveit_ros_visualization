@@ -12,7 +12,7 @@ With this tab, user can provide a set of points to plan a go-through trajectory 
 ## Note
 Currently, only the branch "melodic" is implemented. The main branch just takes a place for later implementation. 
 
-## Usage
+## Build
 ### MoveIt intalled from source
 By this case, just clone this repository and replace the "visualization", then build.
 
@@ -40,6 +40,7 @@ catkin_make
 ```
 depends on your environment.
 
+## Usage
 Once the build is finished, the tab "Waypoints" will be loaded following the "Planning" while running the MoveIt launch file. Let's take the panda_moveit_config as an example:
 ```
 cd <your_workspace>
