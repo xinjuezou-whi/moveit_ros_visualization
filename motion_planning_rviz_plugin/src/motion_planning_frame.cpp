@@ -34,12 +34,11 @@
 
 /* Author: Ioan Sucan */
 
-#include <functional>
-
 #include <moveit/common_planning_interface_objects/common_objects.h>
 #include <moveit/motion_planning_rviz_plugin/motion_planning_frame.h>
 #include <moveit/motion_planning_rviz_plugin/motion_planning_frame_joints_widget.h>
 #include <moveit/motion_planning_rviz_plugin/motion_planning_display.h>
+#include <moveit/motion_planning_rviz_plugin/motion_planning_frame_waypoints.h>
 #include <moveit/move_group/capability_names.h>
 
 #include <geometric_shapes/shape_operations.h>
@@ -61,7 +60,12 @@
 namespace moveit_rviz_plugin
 {
 MotionPlanningFrame::MotionPlanningFrame(MotionPlanningDisplay* pdisplay, rviz::DisplayContext* context, QWidget* parent)
-  : QWidget(parent), planning_display_(pdisplay), context_(context), ui_(new Ui::MotionPlanningUI()), first_time_(true)
+  : QWidget(parent)
+  , planning_display_(pdisplay)
+  , context_(context)
+  , ui_(new Ui::MotionPlanningUI())
+  , first_time_(true)
+  , clear_octomap_service_client_(nh_.serviceClient<std_srvs::Empty>(move_group::CLEAR_OCTOMAP_SERVICE_NAME))
 {
   // set up the GUI
   ui_->setupUi(this);
@@ -75,9 +79,85 @@ MotionPlanningFrame::MotionPlanningFrame(MotionPlanningDisplay* pdisplay, rviz::
 
   // add more tabs
   joints_tab_ = new MotionPlanningFrameJointsWidget(planning_display_, ui_->tabWidget);
-  ui_->tabWidget->insertTab(2, joints_tab_, "Joints");
+  ui_->tabWidget->insertTab(2, joints_tab_, "Joints"); // I prefer joints following planning tab
   connect(planning_display_, SIGNAL(queryStartStateChanged()), joints_tab_, SLOT(queryStartStateChanged()));
   connect(planning_display_, SIGNAL(queryGoalStateChanged()), joints_tab_, SLOT(queryGoalStateChanged()));
+  // tab waypoints
+  waypoints_tab_ = new MotionPlanningFrameWaypointsWidget(planning_display_, ui_->tabWidget);
+  ui_->tabWidget->insertTab(2, waypoints_tab_, "Waypoints");
+  waypoints_tab_->setPlanningGroupName(QString::fromStdString(planning_display_->getCurrentPlanningGroup()));
+  // register plan and execute related functions
+  waypoints_tab_->registerPlan([=](const std::vector<geometry_msgs::Pose>& Waypoints, Ui::MotionPlanningFrameWaypointsUI* UiPtr)
+  {
+    publishSceneIfNeeded();
+
+    planning_display_->addBackgroundJob([this, &Waypoints, UiPtr]
+    {
+      if (!move_group_)
+        return;
+
+      configureForPlanning();
+      planning_display_->rememberPreviousStartState();
+      if (computeCartesianPlan(Waypoints))
+      {
+        UiPtr->execute_button->setEnabled(true);
+      }
+      else
+      {
+        current_plan_.reset();
+      }
+
+      Q_EMIT planningFinished();
+    }, "compute plan");
+  });
+  waypoints_tab_->registerExecute([=](Ui::MotionPlanningFrameWaypointsUI* UiPtr)
+  {
+    UiPtr->execute_button->setEnabled(false);
+
+    planning_display_->spawnBackgroundJob([this, UiPtr]
+    {
+      // ensures the MoveGroupInterface is not destroyed while executing
+      moveit::planning_interface::MoveGroupInterfacePtr mgi(move_group_);
+      if (mgi && current_plan_)
+      {
+        UiPtr->stop_button->setEnabled(true);
+        bool success = mgi->execute(*current_plan_) == moveit::core::MoveItErrorCode::SUCCESS;
+        UiPtr->stop_button->setEnabled(false);
+      }
+    });
+  });
+  waypoints_tab_->registerPlanAndExecute([=](const std::vector<geometry_msgs::Pose>& Waypoints, Ui::MotionPlanningFrameWaypointsUI* UiPtr)
+  {
+    publishSceneIfNeeded();
+    UiPtr->plan_and_execute_button->setEnabled(false);
+    UiPtr->execute_button->setEnabled(false);
+
+    planning_display_->spawnBackgroundJob([this, &Waypoints, UiPtr]
+    {
+      if (!move_group_)
+        return;
+    
+      configureForPlanning();
+      planning_display_->rememberPreviousStartState();
+      // move_group::move() on the server side, will always start from the current state
+      // to suppress a warning, we pass an empty state (which encodes "start from current state")
+      move_group_->setStartStateToCurrentState();
+
+      if (computeCartesianPlan(Waypoints))
+      {
+        // ensures the MoveGroupInterface is not destroyed while executing
+        moveit::planning_interface::MoveGroupInterfacePtr mgi(move_group_);
+        if (mgi && current_plan_)
+        {
+          UiPtr->stop_button->setEnabled(true);
+          bool success = mgi->execute(*current_plan_) == moveit::core::MoveItErrorCode::SUCCESS;
+          UiPtr->stop_button->setEnabled(false);
+        }
+      }
+      UiPtr->plan_and_execute_button->setEnabled(true);
+    });
+  });
+  waypoints_tab_->registerStop(std::bind(&MotionPlanningFrame::stopButtonClicked, this));
 
   // connect bottons to actions; each action usually registers the function pointer for the actual computation,
   // to keep the GUI more responsive (using the background job processing)
@@ -100,8 +180,8 @@ MotionPlanningFrame::MotionPlanningFrame(MotionPlanningDisplay* pdisplay, rviz::
   connect(ui_->allow_looking, SIGNAL(toggled(bool)), this, SLOT(allowLookingToggled(bool)));
   connect(ui_->allow_replanning, SIGNAL(toggled(bool)), this, SLOT(allowReplanningToggled(bool)));
   connect(ui_->allow_external_program, SIGNAL(toggled(bool)), this, SLOT(allowExternalProgramCommunication(bool)));
-  connect(ui_->planning_pipeline_combo_box, SIGNAL(currentIndexChanged(int)), this,
-          SLOT(planningPipelineIndexChanged(int)));
+  connect(ui_->planning_algorithm_combo_box, SIGNAL(currentIndexChanged(int)), this,
+          SLOT(planningAlgorithmIndexChanged(int)));
   connect(ui_->planning_algorithm_combo_box, SIGNAL(currentIndexChanged(int)), this,
           SLOT(planningAlgorithmIndexChanged(int)));
   connect(ui_->clear_scene_button, SIGNAL(clicked()), this, SLOT(clearScene()));
@@ -183,17 +263,20 @@ MotionPlanningFrame::MotionPlanningFrame(MotionPlanningDisplay* pdisplay, rviz::
 
   known_collision_objects_version_ = 0;
 
-  initFromMoveGroupNS();
+  planning_scene_publisher_ = nh_.advertise<moveit_msgs::PlanningScene>("planning_scene", 1);
+  planning_scene_world_publisher_ = nh_.advertise<moveit_msgs::PlanningSceneWorld>("planning_scene_world", 1);
 
-  object_recognition_client_ =
-      std::make_unique<actionlib::SimpleActionClient<object_recognition_msgs::ObjectRecognitionAction>>(
-          OBJECT_RECOGNITION_ACTION, false);
+  // object_recognition_trigger_publisher_ = nh_.advertise<std_msgs::Bool>("recognize_objects_switch", 1);
+  object_recognition_client_.reset(new actionlib::SimpleActionClient<object_recognition_msgs::ObjectRecognitionAction>(
+      OBJECT_RECOGNITION_ACTION, false));
+  object_recognition_subscriber_ =
+      nh_.subscribe("recognized_object_array", 1, &MotionPlanningFrame::listenDetectedObjects, this);
 
   if (object_recognition_client_)
   {
     try
     {
-      waitForAction(object_recognition_client_, ros::Duration(3.0), OBJECT_RECOGNITION_ACTION);
+      waitForAction(object_recognition_client_, nh_, ros::Duration(3.0), OBJECT_RECOGNITION_ACTION);
     }
     catch (std::exception& ex)
     {
@@ -207,13 +290,13 @@ MotionPlanningFrame::MotionPlanningFrame(MotionPlanningDisplay* pdisplay, rviz::
     const planning_scene_monitor::LockedPlanningSceneRO& ps = planning_display_->getPlanningSceneRO();
     if (ps)
     {
-      semantic_world_ = std::make_shared<moveit::semantic_world::SemanticWorld>(ps);
+      semantic_world_.reset(new moveit::semantic_world::SemanticWorld(ps));
     }
     else
       semantic_world_.reset();
     if (semantic_world_)
     {
-      semantic_world_->addTableCallback([this] { updateTables(); });
+      semantic_world_->addTableCallback(boost::bind(&MotionPlanningFrame::updateTables, this));
     }
   }
   catch (std::exception& ex)
@@ -235,8 +318,8 @@ void MotionPlanningFrame::approximateIKChanged(int state)
 void MotionPlanningFrame::setItemSelectionInList(const std::string& item_name, bool selection, QListWidget* list)
 {
   QList<QListWidgetItem*> found_items = list->findItems(QString(item_name.c_str()), Qt::MatchExactly);
-  for (QListWidgetItem* found_item : found_items)
-    found_item->setSelected(selection);
+  for (int i = 0; i < found_items.size(); ++i)
+    found_items[i]->setSelected(selection);
 }
 
 void MotionPlanningFrame::allowExternalProgramCommunication(bool enable)
@@ -280,7 +363,7 @@ void MotionPlanningFrame::fillPlanningGroupOptions()
   const QSignalBlocker planning_group_blocker(ui_->planning_group_combo_box);
   ui_->planning_group_combo_box->clear();
 
-  const moveit::core::RobotModelConstPtr& kmodel = planning_display_->getRobotModel();
+  const robot_model::RobotModelConstPtr& kmodel = planning_display_->getRobotModel();
   for (const std::string& group_name : kmodel->getJointModelGroupNames())
     ui_->planning_group_combo_box->addItem(QString::fromStdString(group_name));
 }
@@ -295,11 +378,11 @@ void MotionPlanningFrame::fillStateSelectionOptions()
   if (!planning_display_->getPlanningSceneMonitor())
     return;
 
-  const moveit::core::RobotModelConstPtr& robot_model = planning_display_->getRobotModel();
+  const robot_model::RobotModelConstPtr& robot_model = planning_display_->getRobotModel();
   std::string group = planning_display_->getCurrentPlanningGroup();
   if (group.empty())
     return;
-  const moveit::core::JointModelGroup* jmg = robot_model->getJointModelGroup(group);
+  const robot_model::JointModelGroup* jmg = robot_model->getJointModelGroup(group);
   if (jmg)
   {
     ui_->start_state_combo_box->addItem(QString("<random valid>"));
@@ -319,10 +402,10 @@ void MotionPlanningFrame::fillStateSelectionOptions()
     {
       ui_->start_state_combo_box->insertSeparator(ui_->start_state_combo_box->count());
       ui_->goal_state_combo_box->insertSeparator(ui_->goal_state_combo_box->count());
-      for (const std::string& known_state : known_states)
+      for (std::size_t i = 0; i < known_states.size(); ++i)
       {
-        ui_->start_state_combo_box->addItem(QString::fromStdString(known_state));
-        ui_->goal_state_combo_box->addItem(QString::fromStdString(known_state));
+        ui_->start_state_combo_box->addItem(QString::fromStdString(known_states[i]));
+        ui_->goal_state_combo_box->addItem(QString::fromStdString(known_states[i]));
       }
     }
 
@@ -336,12 +419,14 @@ void MotionPlanningFrame::changePlanningGroupHelper()
   if (!planning_display_->getPlanningSceneMonitor())
     return;
 
-  planning_display_->addMainLoopJob([this] { fillStateSelectionOptions(); });
-  planning_display_->addMainLoopJob([this]() { populateConstraintsList(std::vector<std::string>()); });
+  planning_display_->addMainLoopJob(boost::bind(&MotionPlanningFrame::fillStateSelectionOptions, this));
+  planning_display_->addMainLoopJob(
+      boost::bind(&MotionPlanningFrame::populateConstraintsList, this, std::vector<std::string>()));
 
-  const moveit::core::RobotModelConstPtr& robot_model = planning_display_->getRobotModel();
+  const robot_model::RobotModelConstPtr& robot_model = planning_display_->getRobotModel();
   std::string group = planning_display_->getCurrentPlanningGroup();
-  planning_display_->addMainLoopJob([&view = *ui_->planner_param_treeview, group] { view.setGroupName(group); });
+  planning_display_->addMainLoopJob(
+      boost::bind(&MotionPlanningParamWidget::setGroupName, ui_->planner_param_treeview, group));
   planning_display_->addMainLoopJob(
       [=]() { ui_->planning_group_combo_box->setCurrentText(QString::fromStdString(group)); });
 
@@ -362,8 +447,7 @@ void MotionPlanningFrame::changePlanningGroupHelper()
 #else
       std::shared_ptr<tf2_ros::Buffer> tf_buffer = context_->getFrameManager()->getTF2BufferPtr();
 #endif
-      move_group_ =
-          std::make_shared<moveit::planning_interface::MoveGroupInterface>(opt, tf_buffer, ros::WallDuration(30, 0));
+      move_group_.reset(new moveit::planning_interface::MoveGroupInterface(opt, tf_buffer, ros::WallDuration(30, 0)));
 
       if (planning_scene_storage_)
         move_group_->setConstraintsDatabase(ui_->database_host->text().toStdString(), ui_->database_port->value());
@@ -372,17 +456,19 @@ void MotionPlanningFrame::changePlanningGroupHelper()
     {
       ROS_ERROR("%s", ex.what());
     }
-    planning_display_->addMainLoopJob([&view = *ui_->planner_param_treeview, this] { view.setMoveGroup(move_group_); });
+    planning_display_->addMainLoopJob(
+        boost::bind(&MotionPlanningParamWidget::setMoveGroup, ui_->planner_param_treeview, move_group_));
     if (move_group_)
     {
       move_group_->allowLooking(ui_->allow_looking->isChecked());
       move_group_->allowReplanning(ui_->allow_replanning->isChecked());
       bool has_unique_endeffector = !move_group_->getEndEffectorLink().empty();
       planning_display_->addMainLoopJob([=]() { ui_->use_cartesian_path->setEnabled(has_unique_endeffector); });
-      std::vector<moveit_msgs::PlannerInterfaceDescription> desc;
-      if (move_group_->getInterfaceDescriptions(desc))
-        planning_display_->addMainLoopJob([this, desc] { populatePlannersList(desc); });
-      planning_display_->addBackgroundJob([this]() { populateConstraintsList(); }, "populateConstraintsList");
+      moveit_msgs::PlannerInterfaceDescription desc;
+      if (move_group_->getInterfaceDescription(desc))
+        planning_display_->addMainLoopJob(boost::bind(&MotionPlanningFrame::populatePlannersList, this, desc));
+      planning_display_->addBackgroundJob(boost::bind(&MotionPlanningFrame::populateConstraintsList, this),
+                                          "populateConstraintsList");
 
       if (first_time_)
       {
@@ -396,22 +482,17 @@ void MotionPlanningFrame::changePlanningGroupHelper()
         // This ensures saved UI settings applied after planning_display_ is ready
         planning_display_->useApproximateIK(ui_->approximate_ik->isChecked());
         if (ui_->allow_external_program->isChecked())
-          planning_display_->addMainLoopJob([this] { allowExternalProgramCommunication(true); });
+          planning_display_->addMainLoopJob(
+              boost::bind(&MotionPlanningFrame::allowExternalProgramCommunication, this, true));
       }
     }
   }
 }
 
-void MotionPlanningFrame::clearRobotModel()
-{
-  ui_->planner_param_treeview->setMoveGroup(moveit::planning_interface::MoveGroupInterfacePtr());
-  joints_tab_->clearRobotModel();
-  move_group_.reset();
-}
-
 void MotionPlanningFrame::changePlanningGroup()
 {
-  planning_display_->addBackgroundJob([this] { changePlanningGroupHelper(); }, "Frame::changePlanningGroup");
+  planning_display_->addBackgroundJob(boost::bind(&MotionPlanningFrame::changePlanningGroupHelper, this),
+                                      "Frame::changePlanningGroup");
   joints_tab_->changePlanningGroup(planning_display_->getCurrentPlanningGroup(),
                                    planning_display_->getQueryStartStateHandler(),
                                    planning_display_->getQueryGoalStateHandler());
@@ -420,7 +501,7 @@ void MotionPlanningFrame::changePlanningGroup()
 void MotionPlanningFrame::sceneUpdate(planning_scene_monitor::PlanningSceneMonitor::SceneUpdateType update_type)
 {
   if (update_type & planning_scene_monitor::PlanningSceneMonitor::UPDATE_GEOMETRY)
-    planning_display_->addMainLoopJob([this] { populateCollisionObjectsList(); });
+    planning_display_->addMainLoopJob(boost::bind(&MotionPlanningFrame::populateCollisionObjectsList, this));
 }
 
 void MotionPlanningFrame::addSceneObject()
@@ -497,12 +578,11 @@ void MotionPlanningFrame::addSceneObject()
   }
   setLocalSceneEdited();
 
-  planning_display_->addMainLoopJob([this] { populateCollisionObjectsList(); });
+  planning_display_->addMainLoopJob(boost::bind(&MotionPlanningFrame::populateCollisionObjectsList, this));
 
   // Automatically select the inserted object so that its IM is displayed
-  planning_display_->addMainLoopJob([this, shape_name, list_widget = ui_->collision_objects_list] {
-    setItemSelectionInList(shape_name, true, list_widget);
-  });
+  planning_display_->addMainLoopJob(
+      boost::bind(&MotionPlanningFrame::setItemSelectionInList, this, shape_name, true, ui_->collision_objects_list));
 
   planning_display_->queueRenderSceneGeometry();
 }
@@ -560,60 +640,15 @@ void MotionPlanningFrame::enable()
   ui_->library_label->setStyleSheet("QLabel { color : red; font: bold }");
   ui_->object_status->setText("");
 
-  const std::string new_ns = ros::names::resolve(planning_display_->getMoveGroupNS());
-  if (nh_.getNamespace() != new_ns)
-  {
-    ROS_INFO("MoveGroup namespace changed: %s -> %s. Reloading params.", nh_.getNamespace().c_str(), new_ns.c_str());
-    initFromMoveGroupNS();
-  }
-
   // activate the frame
-  if (parentWidget())
-    parentWidget()->show();
-}
-
-// (re)initialize after MotionPlanningDisplay::changedMoveGroupNS()
-// Should be called from constructor and enable() only
-void MotionPlanningFrame::initFromMoveGroupNS()
-{
-  nh_ = ros::NodeHandle(planning_display_->getMoveGroupNS());  // <namespace>/<MoveGroupNS>
-
-  // Create namespace-dependent services, topics, and subscribers
-  clear_octomap_service_client_ = nh_.serviceClient<std_srvs::Empty>(move_group::CLEAR_OCTOMAP_SERVICE_NAME);
-
-  object_recognition_subscriber_ =
-      nh_.subscribe("recognized_object_array", 1, &MotionPlanningFrame::listenDetectedObjects, this);
-
-  planning_scene_publisher_ = nh_.advertise<moveit_msgs::PlanningScene>("planning_scene", 1);
-  planning_scene_world_publisher_ = nh_.advertise<moveit_msgs::PlanningSceneWorld>("planning_scene_world", 1);
-
-  // Set initial velocity and acceleration scaling factors from ROS parameters
-  double factor;
-  nh_.param<double>("robot_description_planning/default_velocity_scaling_factor", factor, 0.1);
-  ui_->velocity_scaling_factor->setValue(factor);
-  nh_.param<double>("robot_description_planning/default_acceleration_scaling_factor", factor, 0.1);
-  ui_->acceleration_scaling_factor->setValue(factor);
-
-  // Fetch parameters from private move_group sub space
-  ros::NodeHandle nh_mg("move_group");  // <namespace>/<MoveGroupNS>/move_group
-  std::string param_name;
-  std::string host_param;
-  int port;
-  if (nh_mg.searchParam("warehouse_host", param_name) && nh_mg.getParam(param_name, host_param))
-    ui_->database_host->setText(QString::fromStdString(host_param));
-  if (nh_mg.searchParam("warehouse_port", param_name) && nh_mg.getParam(param_name, port))
-    ui_->database_port->setValue(port);
-
-  // Get default planning pipeline id
-  nh_mg.param<std::string>("default_planning_pipeline", default_planning_pipeline_, "");
+  parentWidget()->show();
 }
 
 void MotionPlanningFrame::disable()
 {
   move_group_.reset();
   scene_marker_.reset();
-  if (parentWidget())
-    parentWidget()->hide();
+  parentWidget()->hide();
 }
 
 void MotionPlanningFrame::tabChanged(int index)
@@ -622,9 +657,15 @@ void MotionPlanningFrame::tabChanged(int index)
     scene_marker_.reset();
   else if (ui_->tabWidget->tabText(index).toStdString() == TAB_OBJECTS)
     selectedCollisionObjectChanged();
+
+  // visual tool for waypoints tab
+  if (ui_->tabWidget->tabText(index).toStdString() == "Waypoints")
+  {
+    waypoints_tab_->setPlanningGroupName(QString::fromStdString(planning_display_->getCurrentPlanningGroup()));
+  }
 }
 
-void MotionPlanningFrame::updateSceneMarkers(float wall_dt, float /*ros_dt*/)
+void MotionPlanningFrame::updateSceneMarkers(float wall_dt, float ros_dt)
 {
   if (scene_marker_)
     scene_marker_->update(wall_dt);

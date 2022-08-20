@@ -55,7 +55,7 @@ RobotStateVisualization::RobotStateVisualization(Ogre::SceneNode* root_node, rvi
   default_attached_object_color_.g = 0.7f;
   default_attached_object_color_.b = 0.0f;
   default_attached_object_color_.a = 1.0f;
-  render_shapes_ = std::make_shared<RenderShapes>(context);
+  render_shapes_.reset(new RenderShapes(context));
 }
 
 void RobotStateVisualization::load(const urdf::ModelInterface& descr, bool visual, bool collision)
@@ -86,34 +86,34 @@ void RobotStateVisualization::updateAttachedObjectColors(const std_msgs::ColorRG
                                     robot_.getAlpha());
 }
 
-void RobotStateVisualization::update(const moveit::core::RobotStateConstPtr& kinematic_state)
+void RobotStateVisualization::update(const robot_state::RobotStateConstPtr& kinematic_state)
 {
   updateHelper(kinematic_state, default_attached_object_color_, nullptr);
 }
 
-void RobotStateVisualization::update(const moveit::core::RobotStateConstPtr& kinematic_state,
+void RobotStateVisualization::update(const robot_state::RobotStateConstPtr& kinematic_state,
                                      const std_msgs::ColorRGBA& default_attached_object_color)
 {
   updateHelper(kinematic_state, default_attached_object_color, nullptr);
 }
 
-void RobotStateVisualization::update(const moveit::core::RobotStateConstPtr& kinematic_state,
+void RobotStateVisualization::update(const robot_state::RobotStateConstPtr& kinematic_state,
                                      const std_msgs::ColorRGBA& default_attached_object_color,
                                      const std::map<std::string, std_msgs::ColorRGBA>& color_map)
 {
   updateHelper(kinematic_state, default_attached_object_color, &color_map);
 }
 
-void RobotStateVisualization::updateHelper(const moveit::core::RobotStateConstPtr& kinematic_state,
+void RobotStateVisualization::updateHelper(const robot_state::RobotStateConstPtr& kinematic_state,
                                            const std_msgs::ColorRGBA& default_attached_object_color,
                                            const std::map<std::string, std_msgs::ColorRGBA>* color_map)
 {
   robot_.update(PlanningLinkUpdater(kinematic_state));
   render_shapes_->clear();
 
-  std::vector<const moveit::core::AttachedBody*> attached_bodies;
+  std::vector<const robot_state::AttachedBody*> attached_bodies;
   kinematic_state->getAttachedBodies(attached_bodies);
-  for (const moveit::core::AttachedBody* attached_body : attached_bodies)
+  for (const robot_state::AttachedBody* attached_body : attached_bodies)
   {
     std_msgs::ColorRGBA color = default_attached_object_color;
     float alpha = robot_.getAlpha();
@@ -135,7 +135,7 @@ void RobotStateVisualization::updateHelper(const moveit::core::RobotStateConstPt
       continue;
     }
     rviz::Color rcolor(color.r, color.g, color.b);
-    const EigenSTL::vector_Isometry3d& ab_t = attached_body->getShapePosesInLinkFrame();
+    const EigenSTL::vector_Isometry3d& ab_t = attached_body->getFixedTransforms();
     const std::vector<shapes::ShapeConstPtr>& ab_shapes = attached_body->getShapes();
     for (std::size_t j = 0; j < ab_shapes.size(); ++j)
     {

@@ -53,7 +53,7 @@ class MotionPlanningFrameJointsUI;
 }
 namespace robot_interaction
 {
-MOVEIT_CLASS_FORWARD(InteractionHandler);
+MOVEIT_CLASS_FORWARD(InteractionHandler)
 }
 namespace moveit_rviz_plugin
 {
@@ -126,7 +126,6 @@ public:
   MotionPlanningFrameJointsWidget(MotionPlanningDisplay* display, QWidget* parent = nullptr);
   ~MotionPlanningFrameJointsWidget() override;
 
-  void clearRobotModel();
   void changePlanningGroup(const std::string& group_name,
                            const robot_interaction::InteractionHandlerPtr& start_state_handler,
                            const robot_interaction::InteractionHandlerPtr& goal_state_handler);
@@ -165,8 +164,8 @@ class ProgressBarDelegate : public QStyledItemDelegate
 public:
   enum CustomRole
   {
-    JointTypeRole = Qt::UserRole,  // NOLINT(readability-identifier-naming)
-    VariableBoundsRole             // NOLINT(readability-identifier-naming)
+    JointTypeRole = Qt::UserRole,
+    VariableBoundsRole
   };
 
   ProgressBarDelegate(QWidget* parent = nullptr) : QStyledItemDelegate(parent)

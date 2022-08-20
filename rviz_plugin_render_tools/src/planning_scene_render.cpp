@@ -48,12 +48,12 @@ PlanningSceneRender::PlanningSceneRender(Ogre::SceneNode* node, rviz::DisplayCon
                                          const RobotStateVisualizationPtr& robot)
   : planning_scene_geometry_node_(node->createChildSceneNode()), context_(context), scene_robot_(robot)
 {
-  render_shapes_ = std::make_shared<RenderShapes>(context);
+  render_shapes_.reset(new RenderShapes(context));
 }
 
 PlanningSceneRender::~PlanningSceneRender()
 {
-  context_->getSceneManager()->destroySceneNode(planning_scene_geometry_node_);
+  context_->getSceneManager()->destroySceneNode(planning_scene_geometry_node_->getName());
 }
 
 void PlanningSceneRender::updateRobotPosition(const planning_scene::PlanningSceneConstPtr& scene)
@@ -84,7 +84,7 @@ void PlanningSceneRender::renderPlanningScene(const planning_scene::PlanningScen
 
   if (scene_robot_)
   {
-    moveit::core::RobotState* rs = new moveit::core::RobotState(scene->getCurrentState());
+    robot_state::RobotState* rs = new robot_state::RobotState(scene->getCurrentState());
     rs->update();
 
     std_msgs::ColorRGBA color;
@@ -94,29 +94,26 @@ void PlanningSceneRender::renderPlanningScene(const planning_scene::PlanningScen
     color.a = 1.0f;
     planning_scene::ObjectColorMap color_map;
     scene->getKnownObjectColors(color_map);
-    scene_robot_->update(moveit::core::RobotStateConstPtr(rs), color, color_map);
+    scene_robot_->update(robot_state::RobotStateConstPtr(rs), color, color_map);
   }
 
   const std::vector<std::string>& ids = scene->getWorld()->getObjectIds();
-  for (const std::string& id : ids)
+  for (std::size_t i = 0; i < ids.size(); ++i)
   {
-    collision_detection::CollisionEnv::ObjectConstPtr object = scene->getWorld()->getObject(id);
+    collision_detection::CollisionWorld::ObjectConstPtr o = scene->getWorld()->getObject(ids[i]);
     rviz::Color color = default_env_color;
     float alpha = default_scene_alpha;
-    if (scene->hasObjectColor(id))
+    if (scene->hasObjectColor(ids[i]))
     {
-      const std_msgs::ColorRGBA& c = scene->getObjectColor(id);
+      const std_msgs::ColorRGBA& c = scene->getObjectColor(ids[i]);
       color.r_ = c.r;
       color.g_ = c.g;
       color.b_ = c.b;
       alpha = c.a;
     }
-    for (std::size_t j = 0; j < object->shapes_.size(); ++j)
-    {
-      render_shapes_->renderShape(planning_scene_geometry_node_, object->shapes_[j].get(),
-                                  object->global_shape_poses_[j], octree_voxel_rendering, octree_color_mode, color,
-                                  alpha);
-    }
+    for (std::size_t j = 0; j < o->shapes_.size(); ++j)
+      render_shapes_->renderShape(planning_scene_geometry_node_, o->shapes_[j].get(), o->shape_poses_[j],
+                                  octree_voxel_rendering, octree_color_mode, color, alpha);
   }
 }
 }  // namespace moveit_rviz_plugin

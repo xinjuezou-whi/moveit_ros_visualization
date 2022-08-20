@@ -49,9 +49,9 @@ namespace moveit_rviz_plugin
 void MotionPlanningFrame::populateRobotStatesList()
 {
   ui_->list_states->clear();
-  for (std::pair<const std::string, moveit_msgs::RobotState>& robot_state : robot_states_)
+  for (RobotStateMap::iterator it = robot_states_.begin(); it != robot_states_.end(); ++it)
   {
-    QListWidgetItem* item = new QListWidgetItem(QString(robot_state.first.c_str()));
+    QListWidgetItem* item = new QListWidgetItem(QString(it->first.c_str()));
     ui_->list_states->addItem(item);
   }
 }
@@ -92,13 +92,13 @@ void MotionPlanningFrame::loadStoredStates(const std::string& pattern)
   // Clear the current list
   clearStatesButtonClicked();
 
-  for (const std::string& name : names)
+  for (std::size_t i = 0; i < names.size(); ++i)
   {
     moveit_warehouse::RobotStateWithMetadata rs;
     bool got_state = false;
     try
     {
-      got_state = robot_state_storage_->getRobotState(rs, name);
+      got_state = robot_state_storage_->getRobotState(rs, names[i]);
     }
     catch (std::exception& ex)
     {
@@ -108,18 +108,18 @@ void MotionPlanningFrame::loadStoredStates(const std::string& pattern)
       continue;
 
     // Overwrite if exists.
-    if (robot_states_.find(name) != robot_states_.end())
+    if (robot_states_.find(names[i]) != robot_states_.end())
     {
-      robot_states_.erase(name);
+      robot_states_.erase(names[i]);
     }
 
     // Store the current start state
-    robot_states_.insert(RobotStatePair(name, *rs));
+    robot_states_.insert(RobotStatePair(names[i], *rs));
   }
   populateRobotStatesList();
 }
 
-void MotionPlanningFrame::saveRobotStateButtonClicked(const moveit::core::RobotState& state)
+void MotionPlanningFrame::saveRobotStateButtonClicked(const robot_state::RobotState& state)
 {
   bool ok = false;
 
@@ -143,7 +143,7 @@ void MotionPlanningFrame::saveRobotStateButtonClicked(const moveit::core::RobotS
       {
         // Store the current start state
         moveit_msgs::RobotState msg;
-        moveit::core::robotStateToRobotStateMsg(state, msg);
+        robot_state::robotStateToRobotStateMsg(state, msg);
         robot_states_.insert(RobotStatePair(name, msg));
 
         // Save to the database if connected
@@ -186,8 +186,8 @@ void MotionPlanningFrame::setAsStartStateButtonClicked()
 
   if (item)
   {
-    moveit::core::RobotState robot_state(*planning_display_->getQueryStartState());
-    moveit::core::robotStateMsgToRobotState(robot_states_[item->text().toStdString()], robot_state);
+    robot_state::RobotState robot_state(*planning_display_->getQueryStartState());
+    robot_state::robotStateMsgToRobotState(robot_states_[item->text().toStdString()], robot_state);
     planning_display_->setQueryStartState(robot_state);
   }
 }
@@ -198,8 +198,8 @@ void MotionPlanningFrame::setAsGoalStateButtonClicked()
 
   if (item)
   {
-    moveit::core::RobotState robot_state(*planning_display_->getQueryGoalState());
-    moveit::core::robotStateMsgToRobotState(robot_states_[item->text().toStdString()], robot_state);
+    robot_state::RobotState robot_state(*planning_display_->getQueryGoalState());
+    robot_state::robotStateMsgToRobotState(robot_states_[item->text().toStdString()], robot_state);
     planning_display_->setQueryGoalState(robot_state);
   }
 }
@@ -221,9 +221,9 @@ void MotionPlanningFrame::removeStateButtonClicked()
       case QMessageBox::Yes:
       {
         QList<QListWidgetItem*> found_items = ui_->list_states->selectedItems();
-        for (QListWidgetItem* found_item : found_items)
+        for (int i = 0; i < found_items.size(); ++i)
         {
-          const std::string& name = found_item->text().toStdString();
+          const std::string& name = found_items[i]->text().toStdString();
           try
           {
             robot_state_storage_->removeRobotState(name);

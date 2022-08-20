@@ -34,7 +34,8 @@
 
 /* Author: Ioan Sucan */
 
-#pragma once
+#ifndef MOVEIT_VISUALIZATION_SCENE_DISPLAY_RVIZ_PLUGIN_SCENE_DISPLAY_
+#define MOVEIT_VISUALIZATION_SCENE_DISPLAY_RVIZ_PLUGIN_SCENE_DISPLAY_
 
 #include <rviz/display.h>
 
@@ -102,7 +103,7 @@ public:
   void clearJobs();
 
   const std::string getMoveGroupNS() const;
-  const moveit::core::RobotModelConstPtr& getRobotModel() const;
+  const robot_model::RobotModelConstPtr& getRobotModel() const;
 
   /// wait for robot state more recent than t
   bool waitForCurrentRobotState(const ros::Time& t = ros::Time::now());
@@ -142,7 +143,7 @@ protected:
 
   /// This function is used by loadRobotModel() and should only be called in the MainLoop
   /// You probably should not call this function directly
-  virtual void clearRobotModel();
+  void clearRobotModel();
 
   /// This function constructs a new planning scene. Probably this should be called in a background thread
   /// as it may take some time to complete its execution
@@ -217,3 +218,5 @@ protected:
 };
 
 }  // namespace moveit_rviz_plugin
+
+#endif

@@ -53,20 +53,8 @@ namespace moveit_rviz_plugin
 {
 void MotionPlanningFrame::databaseConnectButtonClicked()
 {
-  planning_display_->addBackgroundJob([this] { computeDatabaseConnectButtonClicked(); }, "connect to database");
-}
-
-void MotionPlanningFrame::planningPipelineIndexChanged(int index)
-{
-  // Refresh planner interface description for selected pipeline
-  if (index >= 0 && static_cast<size_t>(index) < planner_descriptions_.size())
-  {
-    // Set the selected pipeline id
-    if (move_group_)
-      move_group_->setPlanningPipelineId(planner_descriptions_[index].pipeline_id);
-
-    populatePlannerDescription(planner_descriptions_[index]);
-  }
+  planning_display_->addBackgroundJob(boost::bind(&MotionPlanningFrame::computeDatabaseConnectButtonClicked, this),
+                                      "connect to database");
 }
 
 void MotionPlanningFrame::planningAlgorithmIndexChanged(int index)
@@ -76,7 +64,6 @@ void MotionPlanningFrame::planningAlgorithmIndexChanged(int index)
     planner_id = "";
 
   ui_->planner_param_treeview->setPlannerId(planner_id);
-
   if (move_group_)
     move_group_->setPlannerId(planner_id);
 }
@@ -84,7 +71,7 @@ void MotionPlanningFrame::planningAlgorithmIndexChanged(int index)
 void MotionPlanningFrame::resetDbButtonClicked()
 {
   if (QMessageBox::warning(this, "Data about to be deleted",
-                           "The following dialog will allow you to drop a MoveIt "
+                           "The following dialog will allow you to drop a MoveIt! "
                            "Warehouse database. Are you sure you want to continue?",
                            QMessageBox::Yes | QMessageBox::No) == QMessageBox::No)
     return;
@@ -106,8 +93,8 @@ void MotionPlanningFrame::resetDbButtonClicked()
           QMessageBox::Yes | QMessageBox::No) == QMessageBox::No)
     return;
 
-  planning_display_->addBackgroundJob([this, db = response.toStdString()] { computeResetDbButtonClicked(db); },
-                                      "reset database");
+  planning_display_->addBackgroundJob(
+      boost::bind(&MotionPlanningFrame::computeResetDbButtonClicked, this, response.toStdString()), "reset database");
 }
 
 void MotionPlanningFrame::computeDatabaseConnectButtonClicked()
@@ -117,34 +104,39 @@ void MotionPlanningFrame::computeDatabaseConnectButtonClicked()
     planning_scene_storage_.reset();
     robot_state_storage_.reset();
     constraints_storage_.reset();
-    planning_display_->addMainLoopJob([this] { computeDatabaseConnectButtonClickedHelper(1); });
+    planning_display_->addMainLoopJob(
+        boost::bind(&MotionPlanningFrame::computeDatabaseConnectButtonClickedHelper, this, 1));
   }
   else
   {
-    planning_display_->addMainLoopJob([this] { computeDatabaseConnectButtonClickedHelper(2); });
+    planning_display_->addMainLoopJob(
+        boost::bind(&MotionPlanningFrame::computeDatabaseConnectButtonClickedHelper, this, 2));
     try
     {
       warehouse_ros::DatabaseConnection::Ptr conn = moveit_warehouse::loadDatabase();
       conn->setParams(ui_->database_host->text().toStdString(), ui_->database_port->value(), 5.0);
       if (conn->connect())
       {
-        planning_scene_storage_ = std::make_shared<moveit_warehouse::PlanningSceneStorage>(conn);
-        robot_state_storage_ = std::make_shared<moveit_warehouse::RobotStateStorage>(conn);
-        constraints_storage_ = std::make_shared<moveit_warehouse::ConstraintsStorage>(conn);
+        planning_scene_storage_.reset(new moveit_warehouse::PlanningSceneStorage(conn));
+        robot_state_storage_.reset(new moveit_warehouse::RobotStateStorage(conn));
+        constraints_storage_.reset(new moveit_warehouse::ConstraintsStorage(conn));
       }
       else
       {
-        planning_display_->addMainLoopJob([this] { computeDatabaseConnectButtonClickedHelper(3); });
+        planning_display_->addMainLoopJob(
+            boost::bind(&MotionPlanningFrame::computeDatabaseConnectButtonClickedHelper, this, 3));
         return;
       }
     }
     catch (std::exception& ex)
     {
-      planning_display_->addMainLoopJob([this] { computeDatabaseConnectButtonClickedHelper(3); });
+      planning_display_->addMainLoopJob(
+          boost::bind(&MotionPlanningFrame::computeDatabaseConnectButtonClickedHelper, this, 3));
       ROS_ERROR("%s", ex.what());
       return;
     }
-    planning_display_->addMainLoopJob([this] { computeDatabaseConnectButtonClickedHelper(4); });
+    planning_display_->addMainLoopJob(
+        boost::bind(&MotionPlanningFrame::computeDatabaseConnectButtonClickedHelper, this, 4));
   }
 }
 
@@ -198,7 +190,8 @@ void MotionPlanningFrame::computeDatabaseConnectButtonClickedHelper(int mode)
     if (move_group_)
     {
       move_group_->setConstraintsDatabase(ui_->database_host->text().toStdString(), ui_->database_port->value());
-      planning_display_->addBackgroundJob([this]() { populateConstraintsList(); }, "populateConstraintsList");
+      planning_display_->addBackgroundJob(boost::bind(&MotionPlanningFrame::populateConstraintsList, this),
+                                          "populateConstraintsList");
     }
   }
 }

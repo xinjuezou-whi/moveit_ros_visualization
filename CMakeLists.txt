@@ -1,8 +1,23 @@
 cmake_minimum_required(VERSION 3.1.3)
 project(moveit_ros_visualization)
 
+if(NOT "${CMAKE_CXX_STANDARD}")
+  set(CMAKE_CXX_STANDARD 14)
+endif()
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
+
+if(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+  # suppress warning in Ogre
+  add_compile_options(-Wno-deprecated-register)
+endif()
+
 # definition needed for boost/math/constants/constants.hpp included by Ogre to compile
 add_definitions(-DBOOST_MATH_DISABLE_FLOAT128)
+
+if(NOT CMAKE_CONFIGURATION_TYPES AND NOT CMAKE_BUILD_TYPE)
+  set(CMAKE_BUILD_TYPE Release)
+endif()
 
 find_package(Boost REQUIRED thread date_time system filesystem)
 find_package(catkin REQUIRED COMPONENTS
@@ -24,10 +39,8 @@ find_package(catkin REQUIRED COMPONENTS
   rosconsole
   object_recognition_msgs
 )
-moveit_build_options()
-
 # TODO: Remove when Kinetic support is dropped
-if(rviz_VERSION VERSION_LESS 1.13.1) # Does rviz support TF2?
+if(rviz_VERSION VERSION_LESS 1.13.1) # Does rviz supports TF2?
   add_definitions(-DRVIZ_TF1)
 endif()
 
@@ -83,11 +96,11 @@ include_directories(rviz_plugin_render_tools/include
                     robot_state_rviz_plugin/include
                     planning_scene_rviz_plugin/include
                     motion_planning_rviz_plugin/include
-                    trajectory_rviz_plugin/include)
+                    trajectory_rviz_plugin/include
+                    ${Boost_INCLUDE_DIRS}
+                    ${catkin_INCLUDE_DIRS})
 
 include_directories(SYSTEM
-                    ${catkin_INCLUDE_DIRS}
-                    ${Boost_INCLUDE_DIRS}
                     ${EIGEN3_INCLUDE_DIRS}
                     ${QT_INCLUDE_DIR})
 

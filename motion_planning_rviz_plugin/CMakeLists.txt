@@ -3,10 +3,12 @@ set(HEADERS
   include/moveit/motion_planning_rviz_plugin/motion_planning_frame.h
   include/moveit/motion_planning_rviz_plugin/motion_planning_frame_joints_widget.h
   include/moveit/motion_planning_rviz_plugin/motion_planning_param_widget.h
+  include/moveit/motion_planning_rviz_plugin/motion_planning_frame_waypoints.h
 )
 qt_wrap_ui(UIC_FILES
   src/ui/motion_planning_rviz_plugin_frame.ui
   src/ui/motion_planning_rviz_plugin_frame_joints.ui
+  src/ui/motion_planning_rviz_plugin_frame_waypoints.ui
 )
 
 include_directories(${CMAKE_CURRENT_BINARY_DIR})
@@ -23,6 +25,7 @@ set(SOURCE_FILES
   src/motion_planning_display.cpp
   src/motion_planning_frame_manipulation.cpp
   src/motion_planning_param_widget.cpp
+  src/motion_planning_frame_waypoints.cpp
   src/icons/icons.qrc
 )
 
@@ -32,7 +35,8 @@ set_target_properties(${MOVEIT_LIB_NAME}_core PROPERTIES VERSION "${${PROJECT_NA
 target_link_libraries(${MOVEIT_LIB_NAME}_core
   moveit_rviz_plugin_render_tools
   moveit_planning_scene_rviz_plugin_core
-  ${catkin_LIBRARIES} ${rviz_DEFAULT_PLUGIN_LIBRARIES} ${QT_LIBRARIES} ${Boost_LIBRARIES})
+  ${catkin_LIBRARIES} ${rviz_DEFAULT_PLUGIN_LIBRARIES} ${QT_LIBRARIES} ${Boost_LIBRARIES}
+)
 
 add_library(${MOVEIT_LIB_NAME} src/plugin_init.cpp)
 set_target_properties(${MOVEIT_LIB_NAME} PROPERTIES VERSION "${${PROJECT_NAME}_VERSION}")

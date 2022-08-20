@@ -34,9 +34,11 @@
 
 /* Author: Ioan Sucan, Dave Coleman, Adam Leeper, Sachin Chitta */
 
-#pragma once
+#ifndef MOVEIT_MOTION_PLANNING_RVIZ_PLUGIN_MOTION_PLANNING_DISPLAY_
+#define MOVEIT_MOTION_PLANNING_RVIZ_PLUGIN_MOTION_PLANNING_DISPLAY_
 
 #include <rviz/display.h>
+#include <rviz/selection/selection_manager.h>
 #include <rviz/panel_dock_widget.h>
 #include <moveit/planning_scene_rviz_plugin/planning_scene_display.h>
 #include <moveit/rviz_plugin_render_tools/trajectory_visualization.h>
@@ -96,17 +98,17 @@ public:
 
   void setName(const QString& name) override;
 
-  moveit::core::RobotStateConstPtr getQueryStartState() const
+  robot_state::RobotStateConstPtr getQueryStartState() const
   {
     return query_start_state_->getState();
   }
 
-  moveit::core::RobotStateConstPtr getQueryGoalState() const
+  robot_state::RobotStateConstPtr getQueryGoalState() const
   {
     return query_goal_state_->getState();
   }
 
-  const moveit::core::RobotState& getPreviousState() const
+  const robot_state::RobotState& getPreviousState() const
   {
     return *previous_state_;
   }
@@ -131,8 +133,8 @@ public:
     trajectory_visual_->dropTrajectory();
   }
 
-  void setQueryStartState(const moveit::core::RobotState& start);
-  void setQueryGoalState(const moveit::core::RobotState& goal);
+  void setQueryStartState(const robot_state::RobotState& start);
+  void setQueryGoalState(const robot_state::RobotState& goal);
 
   void updateQueryStates(const moveit::core::RobotState& current_state);
   void updateQueryStartState();
@@ -145,6 +147,11 @@ public:
   void clearPlaceLocationsDisplay();
   void visualizePlaceLocations(const std::vector<geometry_msgs::PoseStamped>& place_poses);
   std::vector<std::shared_ptr<rviz::Shape> > place_locations_display_;
+
+  // Waypoints
+  void clearWaypointsLocationsDisplay();
+  void visualizeWaypointsLocations(const std::vector<geometry_msgs::PoseStamped>& waypoints_poses);
+  std::vector<std::shared_ptr<rviz::Shape> > waypoints_locations_display_;
 
   std::string getCurrentPlanningGroup() const;
 
@@ -196,7 +203,6 @@ protected:
     OUTSIDE_BOUNDS_LINK
   };
 
-  void clearRobotModel() override;
   void onRobotModelLoaded() override;
   void onNewPlanningSceneState() override;
   void onSceneMonitorReceivedUpdate(planning_scene_monitor::PlanningSceneMonitor::SceneUpdateType update_type) override;
@@ -219,14 +225,14 @@ protected:
   void scheduleDrawQueryStartState(robot_interaction::InteractionHandler* handler, bool error_state_changed);
   void scheduleDrawQueryGoalState(robot_interaction::InteractionHandler* handler, bool error_state_changed);
 
-  bool isIKSolutionCollisionFree(moveit::core::RobotState* state, const moveit::core::JointModelGroup* group,
+  bool isIKSolutionCollisionFree(robot_state::RobotState* state, const robot_state::JointModelGroup* group,
                                  const double* ik_solution) const;
 
   void computeMetrics(bool start, const std::string& group, double payload);
   void computeMetricsInternal(std::map<std::string, double>& metrics,
                               const robot_interaction::EndEffectorInteraction& eef,
-                              const moveit::core::RobotState& state, double payload);
-  void updateStateExceptModified(moveit::core::RobotState& dest, const moveit::core::RobotState& src);
+                              const robot_state::RobotState& state, double payload);
+  void updateStateExceptModified(robot_state::RobotState& dest, const robot_state::RobotState& src);
   void updateBackgroundJobProgressBar();
   void backgroundJobUpdate(moveit::tools::BackgroundProcessing::JobEvent event, const std::string& jobname);
 
@@ -267,7 +273,7 @@ protected:
   std::map<std::string, LinkDisplayStatus> status_links_start_;
   std::map<std::string, LinkDisplayStatus> status_links_goal_;
   /// remember previous start state (updated before starting execution)
-  moveit::core::RobotStatePtr previous_state_;
+  robot_state::RobotStatePtr previous_state_;
 
   /// Hold the names of the groups for which the query states have been updated (and should not be altered when new info
   /// is received from the planning scene)
@@ -315,3 +321,5 @@ protected:
 };
 
 }  // namespace moveit_rviz_plugin
+
+#endif

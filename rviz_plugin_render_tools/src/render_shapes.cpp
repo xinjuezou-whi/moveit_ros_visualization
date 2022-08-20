@@ -36,7 +36,6 @@
 
 #include <moveit/rviz_plugin_render_tools/render_shapes.h>
 #include <moveit/rviz_plugin_render_tools/octomap_render.h>
-#include <geometric_shapes/check_isometry.h>
 #include <geometric_shapes/mesh_operations.h>
 
 #include <OgreSceneNode.h>
@@ -79,8 +78,7 @@ void RenderShapes::renderShape(Ogre::SceneNode* node, const shapes::Shape* s, co
   rviz::Shape* ogre_shape = nullptr;
   Eigen::Vector3d translation = p.translation();
   Ogre::Vector3 position(translation.x(), translation.y(), translation.z());
-  ASSERT_ISOMETRY(p)  // unsanitized input, could contain a non-isometry
-  Eigen::Quaterniond q(p.linear());
+  Eigen::Quaterniond q(p.rotation());
   Ogre::Quaternion orientation(q.w(), q.x(), q.y(), q.z());
 
   // we don't know how to render cones directly, but we can convert them to a mesh
@@ -159,7 +157,7 @@ void RenderShapes::renderShape(Ogre::SceneNode* node, const shapes::Shape* s, co
     case shapes::OCTREE:
     {
       OcTreeRenderPtr octree(new OcTreeRender(static_cast<const shapes::OcTree*>(s)->octree, octree_voxel_rendering,
-                                              octree_color_mode, 0u, node));
+                                              octree_color_mode, 0u, context_->getSceneManager(), node));
       octree->setPosition(position);
       octree->setOrientation(orientation);
       octree_voxel_grids_.push_back(octree);
@@ -191,8 +189,8 @@ void RenderShapes::renderShape(Ogre::SceneNode* node, const shapes::Shape* s, co
 
 void RenderShapes::updateShapeColors(float r, float g, float b, float a)
 {
-  for (const std::unique_ptr<rviz::Shape>& shape : scene_shapes_)
-    shape->setColor(r, g, b, a);
+  for (auto it = scene_shapes_.begin(), end = scene_shapes_.end(); it != end; ++it)
+    (**it).setColor(r, g, b, a);
 }
 
 }  // namespace moveit_rviz_plugin

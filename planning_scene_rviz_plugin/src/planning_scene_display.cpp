@@ -58,8 +58,6 @@
 #include <OgreSceneManager.h>
 #include <OgreSceneNode.h>
 
-#include <memory>
-
 namespace moveit_rviz_plugin
 {
 // ******************************************************************************************
@@ -169,8 +167,9 @@ PlanningSceneDisplay::~PlanningSceneDisplay()
 
   planning_scene_render_.reset();
   if (context_ && context_->getSceneManager() && planning_scene_node_)
-    context_->getSceneManager()->destroySceneNode(planning_scene_node_);
-  planning_scene_robot_.reset();
+    context_->getSceneManager()->destroySceneNode(planning_scene_node_->getName());
+  if (planning_scene_robot_)
+    planning_scene_robot_.reset();
   planning_scene_monitor_.reset();
 }
 
@@ -187,13 +186,13 @@ void PlanningSceneDisplay::onInitialize()
 {
   Display::onInitialize();
 
-  // the scene node that contains everything and is located at the planning frame
+  // the scene node that contains everything
   planning_scene_node_ = scene_node_->createChildSceneNode();
 
   if (robot_category_)
   {
-    planning_scene_robot_ =
-        std::make_shared<RobotStateVisualization>(planning_scene_node_, context_, "Planning Scene", robot_category_);
+    planning_scene_robot_.reset(
+        new RobotStateVisualization(planning_scene_node_, context_, "Planning Scene", robot_category_));
     planning_scene_robot_->setVisible(true);
     planning_scene_robot_->setVisualVisible(scene_robot_visual_enabled_property_->getBool());
     planning_scene_robot_->setCollisionVisible(scene_robot_collision_enabled_property_->getBool());
@@ -209,7 +208,7 @@ void PlanningSceneDisplay::reset()
   Display::reset();
 
   if (isEnabled())
-    addBackgroundJob([this] { loadRobotModel(); }, "loadRobotModel");
+    addBackgroundJob(boost::bind(&PlanningSceneDisplay::loadRobotModel, this), "loadRobotModel");
 
   if (planning_scene_robot_)
   {
@@ -274,13 +273,13 @@ const std::string PlanningSceneDisplay::getMoveGroupNS() const
   return move_group_ns_property_->getStdString();
 }
 
-const moveit::core::RobotModelConstPtr& PlanningSceneDisplay::getRobotModel() const
+const robot_model::RobotModelConstPtr& PlanningSceneDisplay::getRobotModel() const
 {
   if (planning_scene_monitor_)
     return planning_scene_monitor_->getRobotModel();
   else
   {
-    static moveit::core::RobotModelConstPtr empty;
+    static robot_model::RobotModelConstPtr empty;
     return empty;
   }
 }
@@ -385,7 +384,7 @@ void PlanningSceneDisplay::changedPlanningSceneTopic()
       service_name = ros::names::append(getMoveGroupNS(), service_name);
     auto bg_func = [=]() {
       if (planning_scene_monitor_->requestPlanningSceneState(service_name))
-        addMainLoopJob([this] { onNewPlanningSceneState(); });
+        addMainLoopJob(boost::bind(&PlanningSceneDisplay::onNewPlanningSceneState, this));
       else
         setStatus(rviz::StatusProperty::Warn, "PlanningScene", "Requesting initial scene failed");
     };
@@ -435,12 +434,12 @@ void PlanningSceneDisplay::setGroupColor(rviz::Robot* robot, const std::string& 
 {
   if (getRobotModel())
   {
-    const moveit::core::JointModelGroup* jmg = getRobotModel()->getJointModelGroup(group_name);
+    const robot_model::JointModelGroup* jmg = getRobotModel()->getJointModelGroup(group_name);
     if (jmg)
     {
       const std::vector<std::string>& links = jmg->getLinkModelNamesWithCollisionGeometry();
-      for (const std::string& link : links)
-        setLinkColor(robot, link, color);
+      for (std::size_t i = 0; i < links.size(); ++i)
+        setLinkColor(robot, links[i], color);
     }
   }
 }
@@ -450,8 +449,8 @@ void PlanningSceneDisplay::unsetAllColors(rviz::Robot* robot)
   if (getRobotModel())
   {
     const std::vector<std::string>& links = getRobotModel()->getLinkModelNamesWithCollisionGeometry();
-    for (const std::string& link : links)
-      unsetLinkColor(robot, link);
+    for (std::size_t i = 0; i < links.size(); ++i)
+      unsetLinkColor(robot, links[i]);
   }
 }
 
@@ -459,12 +458,12 @@ void PlanningSceneDisplay::unsetGroupColor(rviz::Robot* robot, const std::string
 {
   if (getRobotModel())
   {
-    const moveit::core::JointModelGroup* jmg = getRobotModel()->getJointModelGroup(group_name);
+    const robot_model::JointModelGroup* jmg = getRobotModel()->getJointModelGroup(group_name);
     if (jmg)
     {
       const std::vector<std::string>& links = jmg->getLinkModelNamesWithCollisionGeometry();
-      for (const std::string& link : links)
-        unsetLinkColor(robot, link);
+      for (std::size_t i = 0; i < links.size(); ++i)
+        unsetLinkColor(robot, links[i]);
     }
   }
 }
@@ -509,15 +508,15 @@ planning_scene_monitor::PlanningSceneMonitorPtr PlanningSceneDisplay::createPlan
 #else
   std::shared_ptr<tf2_ros::Buffer> tf_buffer = context_->getFrameManager()->getTF2BufferPtr();
 #endif
-  return std::make_shared<planning_scene_monitor::PlanningSceneMonitor>(
-      robot_description_property_->getStdString(), tf_buffer, getNameStd() + "_planning_scene_monitor");
+  return planning_scene_monitor::PlanningSceneMonitorPtr(new planning_scene_monitor::PlanningSceneMonitor(
+      robot_description_property_->getStdString(), tf_buffer, getNameStd() + "_planning_scene_monitor"));
 }
 
 void PlanningSceneDisplay::clearRobotModel()
 {
   planning_scene_render_.reset();
-  // Ensure old PSM is destroyed before we attempt to create a new one
-  planning_scene_monitor_.reset();
+  planning_scene_monitor_.reset();  // this so that the destructor of the PlanningSceneMonitor gets called before a new
+                                    // instance of a scene monitor is constructed
 }
 
 void PlanningSceneDisplay::loadRobotModel()
@@ -528,7 +527,7 @@ void PlanningSceneDisplay::loadRobotModel()
   // we need to make sure the clearing of the robot model is in the main thread,
   // so that rendering operations do not have data removed from underneath,
   // so the next function is executed in the main loop
-  addMainLoopJob([this] { clearRobotModel(); });
+  addMainLoopJob(boost::bind(&PlanningSceneDisplay::clearRobotModel, this));
 
   waitForAllMainLoopJobs();
 
@@ -536,11 +535,8 @@ void PlanningSceneDisplay::loadRobotModel()
   if (psm->getPlanningScene())
   {
     planning_scene_monitor_.swap(psm);
-    planning_scene_monitor_->addUpdateCallback(
-        [this](planning_scene_monitor::PlanningSceneMonitor::SceneUpdateType type) {
-          sceneMonitorReceivedUpdate(type);
-        });
-    addMainLoopJob([this] { onRobotModelLoaded(); });
+    planning_scene_monitor_->addUpdateCallback(boost::bind(&PlanningSceneDisplay::sceneMonitorReceivedUpdate, this, _1));
+    addMainLoopJob(boost::bind(&PlanningSceneDisplay::onRobotModelLoaded, this));
     waitForAllMainLoopJobs();
   }
   else
@@ -553,16 +549,16 @@ void PlanningSceneDisplay::loadRobotModel()
 void PlanningSceneDisplay::onRobotModelLoaded()
 {
   changedPlanningSceneTopic();
-  planning_scene_render_ = std::make_shared<PlanningSceneRender>(planning_scene_node_, context_, planning_scene_robot_);
+  planning_scene_render_.reset(new PlanningSceneRender(planning_scene_node_, context_, planning_scene_robot_));
   planning_scene_render_->getGeometryNode()->setVisible(scene_enabled_property_->getBool());
 
   const planning_scene_monitor::LockedPlanningSceneRO& ps = getPlanningSceneRO();
   if (planning_scene_robot_)
   {
     planning_scene_robot_->load(*getRobotModel()->getURDF());
-    moveit::core::RobotState* rs = new moveit::core::RobotState(ps->getCurrentState());
+    robot_state::RobotState* rs = new robot_state::RobotState(ps->getCurrentState());
     rs->update();
-    planning_scene_robot_->update(moveit::core::RobotStateConstPtr(rs));
+    planning_scene_robot_->update(robot_state::RobotStateConstPtr(rs));
   }
 
   bool old_state = scene_name_property_->blockSignals(true);
@@ -583,7 +579,7 @@ void PlanningSceneDisplay::sceneMonitorReceivedUpdate(
 }
 
 void PlanningSceneDisplay::onSceneMonitorReceivedUpdate(
-    planning_scene_monitor::PlanningSceneMonitor::SceneUpdateType /*update_type*/)
+    planning_scene_monitor::PlanningSceneMonitor::SceneUpdateType update_type)
 {
   getPlanningSceneRW()->getCurrentStateNonConst().update();
   QMetaObject::invokeMethod(this, "setSceneName", Qt::QueuedConnection,
@@ -600,7 +596,7 @@ void PlanningSceneDisplay::onEnable()
 {
   Display::onEnable();
 
-  addBackgroundJob([this] { loadRobotModel(); }, "loadRobotModel");
+  addBackgroundJob(boost::bind(&PlanningSceneDisplay::loadRobotModel, this), "loadRobotModel");
 
   if (planning_scene_robot_)
   {
@@ -642,13 +638,11 @@ void PlanningSceneDisplay::update(float wall_dt, float ros_dt)
 
   executeMainLoopJobs();
 
-  calculateOffsetPosition();
-
   if (planning_scene_monitor_)
     updateInternal(wall_dt, ros_dt);
 }
 
-void PlanningSceneDisplay::updateInternal(float wall_dt, float /*ros_dt*/)
+void PlanningSceneDisplay::updateInternal(float wall_dt, float ros_dt)
 {
   current_scene_time_ += wall_dt;
   if (planning_scene_render_ &&
@@ -656,6 +650,7 @@ void PlanningSceneDisplay::updateInternal(float wall_dt, float /*ros_dt*/)
        planning_scene_needs_render_))
   {
     renderPlanningScene();
+    calculateOffsetPosition();
     current_scene_time_ = 0.0f;
     robot_state_needs_render_ = false;
     planning_scene_needs_render_ = false;

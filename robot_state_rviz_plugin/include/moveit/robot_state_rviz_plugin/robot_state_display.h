@@ -34,7 +34,8 @@
 
 /* Author: Ioan Sucan */
 
-#pragma once
+#ifndef MOVEIT_VISUALIZATION_ROBOT_STATE_DISPLAY_RVIZ_ROBOT_STATE_DISPLAY_
+#define MOVEIT_VISUALIZATION_ROBOT_STATE_DISPLAY_RVIZ_ROBOT_STATE_DISPLAY_
 
 #include <rviz/display.h>
 
@@ -71,7 +72,7 @@ public:
   void update(float wall_dt, float ros_dt) override;
   void reset() override;
 
-  const moveit::core::RobotModelConstPtr& getRobotModel() const
+  const robot_model::RobotModelConstPtr& getRobotModel() const
   {
     return robot_model_;
   }
@@ -126,8 +127,8 @@ protected:
 
   RobotStateVisualizationPtr robot_;
   rdf_loader::RDFLoaderPtr rdf_loader_;
-  moveit::core::RobotModelConstPtr robot_model_;
-  moveit::core::RobotStatePtr robot_state_;
+  robot_model::RobotModelConstPtr robot_model_;
+  robot_state::RobotStatePtr robot_state_;
   std::map<std::string, std_msgs::ColorRGBA> highlights_;
   bool update_state_;
 
@@ -143,3 +144,5 @@ protected:
 };
 
 }  // namespace moveit_rviz_plugin
+
+#endif

@@ -34,11 +34,11 @@
 
 /* Author: Robert Haschke */
 
-#pragma once
+#ifndef MOVEIT_MOTION_PLANNING_RVIZ_PLUGIN_MOTION_PLANNING_PARAM_WIDGET_
+#define MOVEIT_MOTION_PLANNING_RVIZ_PLUGIN_MOTION_PLANNING_PARAM_WIDGET_
 
-#include <moveit/macros/class_forward.h>
 #include <rviz/properties/property_tree_widget.h>
-
+#include <moveit/macros/class_forward.h>
 namespace moveit
 {
 namespace planning_interface
@@ -77,3 +77,5 @@ private:
   std::string planner_id_;
 };
 }  // namespace moveit_rviz_plugin
+
+#endif

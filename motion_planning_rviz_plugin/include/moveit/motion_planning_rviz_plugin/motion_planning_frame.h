@@ -34,7 +34,8 @@
 
 /* Author: Ioan Sucan */
 
-#pragma once
+#ifndef MOVEIT_MOTION_PLANNING_RVIZ_PLUGIN_MOTION_PLANNING_FRAME_
+#define MOVEIT_MOTION_PLANNING_RVIZ_PLUGIN_MOTION_PLANNING_FRAME_
 
 #include <QWidget>
 #include <QTreeWidgetItem>
@@ -82,6 +83,7 @@ namespace moveit_rviz_plugin
 {
 class MotionPlanningDisplay;
 class MotionPlanningFrameJointsWidget;
+class MotionPlanningFrameWaypointsWidget; // forward declaration of waypoints tab
 
 const std::string OBJECT_RECOGNITION_ACTION = "/recognize_objects";
 
@@ -105,7 +107,6 @@ public:
   MotionPlanningFrame(MotionPlanningDisplay* pdisplay, rviz::DisplayContext* context, QWidget* parent = nullptr);
   ~MotionPlanningFrame() override;
 
-  void clearRobotModel();
   void changePlanningGroup();
   void enable();
   void disable();
@@ -115,7 +116,6 @@ protected:
   static const int ITEM_TYPE_SCENE = 1;
   static const int ITEM_TYPE_QUERY = 2;
 
-  void initFromMoveGroupNS();
   void constructPlanningRequest(moveit_msgs::MotionPlanRequest& mreq);
 
   void updateSceneMarkers(float wall_dt, float ros_dt);
@@ -126,6 +126,7 @@ protected:
   rviz::DisplayContext* context_;
   Ui::MotionPlanningUI* ui_;
   MotionPlanningFrameJointsWidget* joints_tab_;
+  MotionPlanningFrameWaypointsWidget* waypoints_tab_;
 
   moveit::planning_interface::MoveGroupInterfacePtr move_group_;
   moveit::semantic_world::SemanticWorldPtr semantic_world_;
@@ -140,8 +141,6 @@ protected:
   typedef std::map<std::string, moveit_msgs::RobotState> RobotStateMap;
   typedef std::pair<std::string, moveit_msgs::RobotState> RobotStatePair;
   RobotStateMap robot_states_;
-  std::string default_planning_pipeline_;
-  std::vector<moveit_msgs::PlannerInterfaceDescription> planner_descriptions_;
 
 Q_SIGNALS:
   void planningFinished();
@@ -151,13 +150,13 @@ private Q_SLOTS:
 
   // Context tab
   void databaseConnectButtonClicked();
-  void planningPipelineIndexChanged(int index);
   void planningAlgorithmIndexChanged(int index);
   void resetDbButtonClicked();
   void approximateIKChanged(int state);
 
   // Planning tab
   bool computeCartesianPlan();
+  bool computeCartesianPlan(const std::vector<geometry_msgs::Pose>& Waypoints);
   bool computeJointSpacePlan();
   void planButtonClicked();
   void executeButtonClicked();
@@ -223,13 +222,15 @@ private Q_SLOTS:
   // General
   void tabChanged(int index);
 
+  // Visual tool
+  void publishWaypoints(const std::vector<geometry_msgs::Pose>& Waypoints);
+
 private:
   // Context tab
   void computeDatabaseConnectButtonClicked();
   void computeDatabaseConnectButtonClickedHelper(int mode);
   void computeResetDbButtonClicked(const std::string& db);
-  void populatePlannersList(const std::vector<moveit_msgs::PlannerInterfaceDescription>& desc);
-  void populatePlannerDescription(const moveit_msgs::PlannerInterfaceDescription& desc);
+  void populatePlannersList(const moveit_msgs::PlannerInterfaceDescription& desc);
 
   // Planning tab
   void computePlanButtonClicked();
@@ -242,7 +243,7 @@ private:
   void populateConstraintsList(const std::vector<std::string>& constr);
   void configureForPlanning();
   void configureWorkspace();
-  void updateQueryStateHelper(moveit::core::RobotState& state, const std::string& v);
+  void updateQueryStateHelper(robot_state::RobotState& state, const std::string& v);
   void fillStateSelectionOptions();
   void fillPlanningGroupOptions();
   void startStateTextChangedExec(const std::string& start_state);
@@ -257,7 +258,7 @@ private:
   void computeImportGeometryFromText(const std::string& path);
   void computeExportGeometryAsText(const std::string& path);
   visualization_msgs::InteractiveMarker
-  createObjectMarkerMsg(const collision_detection::CollisionEnv::ObjectConstPtr& obj);
+  createObjectMarkerMsg(const collision_detection::CollisionWorld::ObjectConstPtr& obj);
 
   // Stored scenes tab
   void computeSaveSceneButtonClicked();
@@ -271,7 +272,7 @@ private:
   void checkPlanningSceneTreeEnabledButtons();
 
   // States tab
-  void saveRobotStateButtonClicked(const moveit::core::RobotState& state);
+  void saveRobotStateButtonClicked(const robot_state::RobotState& state);
   void populateRobotStatesList();
 
   // Pick and place
@@ -295,7 +296,8 @@ private:
   std::unique_ptr<actionlib::SimpleActionClient<object_recognition_msgs::ObjectRecognitionAction> >
       object_recognition_client_;
   template <typename T>
-  void waitForAction(const T& action, const ros::Duration& wait_for_server, const std::string& name);
+  void waitForAction(const T& action, const ros::NodeHandle& node_handle, const ros::Duration& wait_for_server,
+                     const std::string& name);
   void listenDetectedObjects(const object_recognition_msgs::RecognizedObjectArrayPtr& msg);
   ros::Subscriber object_recognition_subscriber_;
 
@@ -322,13 +324,11 @@ private:
   /* Selects or unselects a item in a list by the item name */
   void setItemSelectionInList(const std::string& item_name, bool selection, QListWidget* list);
 
-  ros::NodeHandle nh_;  // node handle with the namespace of the connected move_group node
+  ros::NodeHandle nh_;
   ros::Publisher planning_scene_publisher_;
   ros::Publisher planning_scene_world_publisher_;
 
-  collision_detection::CollisionEnv::ObjectConstPtr scaled_object_;
-  moveit::core::FixedTransformsMap scaled_object_subframes_;
-  EigenSTL::vector_Isometry3d scaled_object_shape_poses_;
+  collision_detection::CollisionWorld::ObjectConstPtr scaled_object_;
 
   std::vector<std::pair<std::string, bool> > known_collision_objects_;
   long unsigned int known_collision_objects_version_;
@@ -338,7 +338,8 @@ private:
 
 // \todo THIS IS REALLY BAD. NEED TO MOVE THIS AND RELATED FUNCTIONALITY OUT OF HERE
 template <typename T>
-void MotionPlanningFrame::waitForAction(const T& action, const ros::Duration& wait_for_server, const std::string& name)
+void MotionPlanningFrame::waitForAction(const T& action, const ros::NodeHandle& node_handle,
+                                        const ros::Duration& wait_for_server, const std::string& name)
 {
   ROS_DEBUG("Waiting for MoveGroup action server (%s)...", name.c_str());
 
@@ -354,7 +355,7 @@ void MotionPlanningFrame::waitForAction(const T& action, const ros::Duration& wa
   if (wait_for_server == ros::Duration(0, 0))
   {
     // wait forever until action server connects
-    while (ros::ok() && !action->isServerConnected())
+    while (node_handle.ok() && !action->isServerConnected())
     {
       ros::WallDuration(0.02).sleep();
       ros::spinOnce();
@@ -364,7 +365,7 @@ void MotionPlanningFrame::waitForAction(const T& action, const ros::Duration& wa
   {
     // wait for a limited amount of non-simulated time
     ros::WallTime final_time = ros::WallTime::now() + ros::WallDuration(wait_for_server.toSec());
-    while (ros::ok() && !action->isServerConnected() && final_time > ros::WallTime::now())
+    while (node_handle.ok() && !action->isServerConnected() && final_time > ros::WallTime::now())
     {
       ros::WallDuration(0.02).sleep();
       ros::spinOnce();
@@ -377,3 +378,5 @@ void MotionPlanningFrame::waitForAction(const T& action, const ros::Duration& wa
     ROS_DEBUG("Connected to '%s'", name.c_str());
 };
 }  // namespace moveit_rviz_plugin
+
+#endif

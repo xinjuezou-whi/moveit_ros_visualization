@@ -34,7 +34,8 @@
 
 /* Author: Ioan Sucan */
 
-#pragma once
+#ifndef MOVEIT_VISUALIZATION_SCENE_DISPLAY_RVIZ_RENDER_SHAPES_
+#define MOVEIT_VISUALIZATION_SCENE_DISPLAY_RVIZ_RENDER_SHAPES_
 
 #include <moveit/rviz_plugin_render_tools/octomap_render.h>
 #include <moveit/macros/class_forward.h>
@@ -78,3 +79,5 @@ private:
   std::vector<OcTreeRenderPtr> octree_voxel_grids_;
 };
 }  // namespace moveit_rviz_plugin
+
+#endif

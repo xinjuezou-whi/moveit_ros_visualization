@@ -34,7 +34,8 @@
 
 /* Author: Ioan Sucan */
 
-#pragma once
+#ifndef MOVEIT_PLANNING_SCENE_RVIZ_PLUGIN_ROBOT_STATE_VISUALIZATION_
+#define MOVEIT_PLANNING_SCENE_RVIZ_PLUGIN_ROBOT_STATE_VISUALIZATION_
 
 #include <moveit/macros/class_forward.h>
 #include <moveit/robot_state/robot_state.h>
@@ -46,7 +47,7 @@ namespace moveit_rviz_plugin
 MOVEIT_CLASS_FORWARD(RenderShapes);             // Defines RenderShapesPtr, ConstPtr, WeakPtr... etc
 MOVEIT_CLASS_FORWARD(RobotStateVisualization);  // Defines RobotStateVisualizationPtr, ConstPtr, WeakPtr... etc
 
-/** \brief Update the links of an rviz::Robot using a moveit::core::RobotState */
+/** \brief Update the links of an rviz::Robot using a robot_state::RobotState */
 class RobotStateVisualization
 {
 public:
@@ -61,21 +62,16 @@ public:
   void load(const urdf::ModelInterface& descr, bool visual = true, bool collision = true);
   void clear();
 
-  void update(const moveit::core::RobotStateConstPtr& kinematic_state);
-  void update(const moveit::core::RobotStateConstPtr& kinematic_state,
+  void update(const robot_state::RobotStateConstPtr& kinematic_state);
+  void update(const robot_state::RobotStateConstPtr& kinematic_state,
               const std_msgs::ColorRGBA& default_attached_object_color);
-  void update(const moveit::core::RobotStateConstPtr& kinematic_state,
+  void update(const robot_state::RobotStateConstPtr& kinematic_state,
               const std_msgs::ColorRGBA& default_attached_object_color,
               const std::map<std::string, std_msgs::ColorRGBA>& color_map);
   void updateKinematicState(const moveit::core::RobotStateConstPtr& kinematic_state);
   void setDefaultAttachedObjectColor(const std_msgs::ColorRGBA& default_attached_object_color);
   /// update color of all attached object shapes
   void updateAttachedObjectColors(const std_msgs::ColorRGBA& attached_object_color);
-
-  bool isVisible() const
-  {
-    return visible_;
-  }
 
   /**
    * \brief Set the robot as a whole to be visible or not
@@ -98,7 +94,7 @@ public:
   void setAlpha(float alpha);
 
 private:
-  void updateHelper(const moveit::core::RobotStateConstPtr& kinematic_state,
+  void updateHelper(const robot_state::RobotStateConstPtr& kinematic_state,
                     const std_msgs::ColorRGBA& default_attached_object_color,
                     const std::map<std::string, std_msgs::ColorRGBA>* color_map);
   rviz::Robot robot_;
@@ -112,3 +108,5 @@ private:
   bool collision_visible_;
 };
 }  // namespace moveit_rviz_plugin
+
+#endif
