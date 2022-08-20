@@ -222,9 +222,6 @@ private Q_SLOTS:
   // General
   void tabChanged(int index);
 
-  // Visual tool
-  void publishWaypoints(const std::vector<geometry_msgs::Pose>& Waypoints);
-
 private:
   // Context tab
   void computeDatabaseConnectButtonClicked();
