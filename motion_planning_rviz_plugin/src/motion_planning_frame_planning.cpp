@@ -46,6 +46,8 @@
 #include <tf2_eigen/tf2_eigen.h>
 #include <moveit/trajectory_processing/iterative_time_parameterization.h>
 
+#include <tf/LinearMath/Matrix3x3.h>
+
 #include "ui_motion_planning_rviz_plugin_frame.h"
 
 namespace moveit_rviz_plugin
@@ -126,6 +128,15 @@ bool MotionPlanningFrame::computeCartesianPlan()
     return false;
   }
   waypoints.push_back(tf2::toMsg(goal.getGlobalLinkTransform(link)));
+  
+#ifdef DEBUG
+  tf::Quaternion quat(waypoints.back().orientation.x, waypoints.back().orientation.y, waypoints.back().orientation.z, waypoints.back().orientation.w);
+  double roll = 0.0, pitch = 0.0, yaw = 0.0;
+  tf::Matrix3x3(quat).getRPY(roll, pitch, yaw);
+  std::cout << "eef position: " << waypoints.back().position.x << " " << waypoints.back().position.y << " " << waypoints.back().position.z << std::endl;
+  std::cout << "eef quaternion: " << waypoints.back().orientation.x << " " << waypoints.back().orientation.y << " " << waypoints.back().orientation.z << " " << waypoints.back().orientation.w << std::endl;
+  std::cout << "eef euler: " << roll << " " << pitch << " " << yaw << std::endl;
+#endif
 
   return computeCartesianPlan(waypoints);
 }

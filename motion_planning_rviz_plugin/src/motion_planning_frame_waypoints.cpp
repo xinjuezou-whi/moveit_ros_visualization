@@ -211,7 +211,7 @@ void MotionPlanningFrameWaypointsWidget::getWaypoints(std::vector<geometry_msgs:
 		pose.orientation.z = orientation.getZ();
 		pose.orientation.w = orientation.getW();
 #ifdef DEBUG
-		std::cout << "orientation " << pose.orientation.x << " " << pose.orientation.y << " " << pose.orientation.z << " " << pose.orientation.w << std::endl;
+		std::cout << "quaternion from euler " << pose.orientation.x << " " << pose.orientation.y << " " << pose.orientation.z << " " << pose.orientation.w << std::endl;
 #endif
 
 		Waypoints.push_back(pose);
