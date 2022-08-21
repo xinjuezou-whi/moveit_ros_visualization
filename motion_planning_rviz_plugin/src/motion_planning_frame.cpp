@@ -94,17 +94,28 @@ MotionPlanningFrame::MotionPlanningFrame(MotionPlanningDisplay* pdisplay, rviz::
     planning_display_->addBackgroundJob([this, &Waypoints, UiPtr]
     {
       if (!move_group_)
+      {
         return;
+      }
 
-      configureForPlanning();
+      waypoints_tab_->configureForPlanning(move_group_);
+      configureWorkspace();
+      if (static_cast<bool>(planning_display_))
+      {
+        planning_display_->dropVisualizedTrajectory();
+      }
       planning_display_->rememberPreviousStartState();
+
+      UiPtr->result_label->setText("Planning...");
       if (computeCartesianPlan(Waypoints))
       {
         UiPtr->execute_button->setEnabled(true);
+        UiPtr->result_label->setText(QString("Time: ").append(QString::number(current_plan_->planning_time_, 'f', 3)));
       }
       else
       {
         current_plan_.reset();
+        UiPtr->result_label->setText("Failed");
       }
 
       Q_EMIT planningFinished();
@@ -122,6 +133,17 @@ MotionPlanningFrame::MotionPlanningFrame(MotionPlanningDisplay* pdisplay, rviz::
       {
         UiPtr->stop_button->setEnabled(true);
         bool success = mgi->execute(*current_plan_) == moveit::core::MoveItErrorCode::SUCCESS;
+        // visualize result of execution
+       	if (success)
+        {
+          QString state = UiPtr->looping->isChecked() ? "Executing..." : "Executed";
+          UiPtr->result_label->setText(state);
+        }
+        else
+        {
+          UiPtr->result_label->setText(!ui_->stop_button->isEnabled() ? "Stopped" : "Failed");
+        }
+        // disable stop button
         UiPtr->stop_button->setEnabled(false);
       }
     });
@@ -135,22 +157,43 @@ MotionPlanningFrame::MotionPlanningFrame(MotionPlanningDisplay* pdisplay, rviz::
     planning_display_->spawnBackgroundJob([this, &Waypoints, UiPtr]
     {
       if (!move_group_)
+      {
         return;
+      }
     
-      configureForPlanning();
+      waypoints_tab_->configureForPlanning(move_group_);
+      configureWorkspace();
+      if (static_cast<bool>(planning_display_))
+      {
+        planning_display_->dropVisualizedTrajectory();
+      }
       planning_display_->rememberPreviousStartState();
       // move_group::move() on the server side, will always start from the current state
       // to suppress a warning, we pass an empty state (which encodes "start from current state")
       move_group_->setStartStateToCurrentState();
 
+      UiPtr->result_label->setText("Planning...");
       if (computeCartesianPlan(Waypoints))
       {
+        UiPtr->execute_button->setEnabled(true);
+        UiPtr->result_label->setText(QString("Time: ").append(QString::number(current_plan_->planning_time_, 'f', 3)));
+
         // ensures the MoveGroupInterface is not destroyed while executing
         moveit::planning_interface::MoveGroupInterfacePtr mgi(move_group_);
         if (mgi && current_plan_)
         {
           UiPtr->stop_button->setEnabled(true);
           bool success = mgi->execute(*current_plan_) == moveit::core::MoveItErrorCode::SUCCESS;
+          // visualize result of execution
+       	  if (success)
+          {
+            UiPtr->result_label->setText("Executed");
+          }
+          else
+          {
+            UiPtr->result_label->setText(!ui_->stop_button->isEnabled() ? "Stopped" : "Failed");
+          }
+          // disable stop button
           UiPtr->stop_button->setEnabled(false);
         }
       }

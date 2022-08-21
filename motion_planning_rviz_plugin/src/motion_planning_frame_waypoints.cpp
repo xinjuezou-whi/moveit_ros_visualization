@@ -27,7 +27,7 @@ namespace moveit_rviz_plugin
 MotionPlanningFrameWaypointsWidget::MotionPlanningFrameWaypointsWidget(MotionPlanningDisplay* display, QWidget* parent)
   : QWidget(parent), ui_(new Ui::MotionPlanningFrameWaypointsUI()), planning_display_(display)
 {
-	std::cout << "\nWHI motion planning waypoints tab VERSION 00.03" << std::endl;
+	std::cout << "\nWHI motion planning waypoints tab VERSION 00.05" << std::endl;
 	std::cout << "Copyright © 2022-2023 Wheel Hub Intelligent Co.,Ltd. All rights reserved\n" << std::endl;
 
 	ui_->setupUi(this);
@@ -68,6 +68,16 @@ MotionPlanningFrameWaypointsWidget::~MotionPlanningFrameWaypointsWidget()
 void MotionPlanningFrameWaypointsWidget::setPlanningGroupName(const QString& Name)
 {
 	ui_->planning_group_name->setText(Name);
+}
+
+void MotionPlanningFrameWaypointsWidget::configureForPlanning(moveit::planning_interface::MoveGroupInterfacePtr MoveGroup)
+{
+	MoveGroup->setStartState(*planning_display_->getQueryStartState());
+	MoveGroup->setJointValueTarget(*planning_display_->getQueryGoalState());
+	MoveGroup->setPlanningTime(ui_->planning_time->value());
+	MoveGroup->setNumPlanningAttempts(ui_->planning_attempts->value());
+	MoveGroup->setMaxVelocityScalingFactor(ui_->velocity_scaling_factor->value());
+	MoveGroup->setMaxAccelerationScalingFactor(ui_->acceleration_scaling_factor->value());
 }
 
 void MotionPlanningFrameWaypointsWidget::registerPlan(const PoseUiCallback& Func)

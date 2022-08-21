@@ -18,6 +18,7 @@ Changelog:
 #pragma once
 #include <moveit/macros/class_forward.h>
 #include <geometry_msgs/Pose.h>
+#include <moveit/move_group_interface/move_group_interface.h>
 #include <QWidget>
 #include <vector>
 #include <memory>
@@ -49,6 +50,7 @@ public:
 
 public:
 	void setPlanningGroupName(const QString& Name);
+	void configureForPlanning(moveit::planning_interface::MoveGroupInterfacePtr MoveGroup);
 	void registerPlan(const PoseUiCallback& Func);
 	void registerExecute(const UiCallback& Func);
 	void registerPlanAndExecute(const PoseUiCallback& Func);
