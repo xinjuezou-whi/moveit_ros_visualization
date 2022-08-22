@@ -15,6 +15,7 @@ All text above must be included in any redistribution.
 #include <moveit/motion_planning_rviz_plugin/motion_planning_frame_waypoints.h>
 #include <moveit/motion_planning_rviz_plugin/motion_planning_display.h>
 #include <tf2/LinearMath/Quaternion.h>
+#include <tf2_geometry_msgs/tf2_geometry_msgs.h>
 #include <angles/angles.h>
 #include <visualization_msgs/Marker.h>
 #include <thread>
@@ -206,10 +207,7 @@ void MotionPlanningFrameWaypointsWidget::getWaypoints(std::vector<geometry_msgs:
 			angles::from_degrees(ui_->waypoints_table->item(i, 4)->text().toDouble()),
 			angles::from_degrees(ui_->waypoints_table->item(i, 5)->text().toDouble()));
 
-		pose.orientation.x = orientation.getX();
-		pose.orientation.y = orientation.getY();
-		pose.orientation.z = orientation.getZ();
-		pose.orientation.w = orientation.getW();
+		pose.orientation = tf2::toMsg(orientation);
 #ifdef DEBUG
 		std::cout << "quaternion from euler " << pose.orientation.x << " " << pose.orientation.y << " " << pose.orientation.z << " " << pose.orientation.w << std::endl;
 #endif
