@@ -40,6 +40,7 @@
 #include <moveit/motion_planning_rviz_plugin/motion_planning_frame.h>
 #include <moveit/motion_planning_rviz_plugin/motion_planning_frame_joints_widget.h>
 #include <moveit/motion_planning_rviz_plugin/motion_planning_display.h>
+#include <moveit/motion_planning_rviz_plugin/motion_planning_frame_waypoints.h>
 #include <moveit/move_group/capability_names.h>
 
 #include <geometric_shapes/shape_operations.h>
@@ -78,6 +79,125 @@ MotionPlanningFrame::MotionPlanningFrame(MotionPlanningDisplay* pdisplay, rviz::
   ui_->tabWidget->insertTab(2, joints_tab_, "Joints");
   connect(planning_display_, SIGNAL(queryStartStateChanged()), joints_tab_, SLOT(queryStartStateChanged()));
   connect(planning_display_, SIGNAL(queryGoalStateChanged()), joints_tab_, SLOT(queryGoalStateChanged()));
+  // tab waypoints
+  waypoints_tab_ = new MotionPlanningFrameWaypointsWidget(planning_display_, ui_->tabWidget);
+  ui_->tabWidget->insertTab(2, waypoints_tab_, "Waypoints");
+  waypoints_tab_->setPlanningGroupName(QString::fromStdString(planning_display_->getCurrentPlanningGroup()));
+  // register plan and execute related functions
+  waypoints_tab_->registerPlan([=](const std::vector<geometry_msgs::Pose>& Waypoints, Ui::MotionPlanningFrameWaypointsUI* UiPtr)
+  {
+    publishSceneIfNeeded();
+
+    planning_display_->addBackgroundJob([this, &Waypoints, UiPtr]
+    {
+      if (!move_group_)
+      {
+        return;
+      }
+
+      waypoints_tab_->configureForPlanning(move_group_);
+      configureWorkspace();
+      if (static_cast<bool>(planning_display_))
+      {
+        planning_display_->dropVisualizedTrajectory();
+      }
+      planning_display_->rememberPreviousStartState();
+
+      UiPtr->result_label->setText("Planning...");
+      if (computeCartesianPlan(Waypoints))
+      {
+        UiPtr->execute_button->setEnabled(true);
+        UiPtr->result_label->setText(QString("Time: ").append(QString::number(current_plan_->planning_time_, 'f', 3)));
+      }
+      else
+      {
+        current_plan_.reset();
+        UiPtr->result_label->setText("Failed");
+      }
+
+      Q_EMIT planningFinished();
+    }, "compute plan");
+  });
+  waypoints_tab_->registerExecute([=](Ui::MotionPlanningFrameWaypointsUI* UiPtr)
+  {
+    UiPtr->execute_button->setEnabled(false);
+
+    planning_display_->spawnBackgroundJob([this, UiPtr]
+    {
+      // ensures the MoveGroupInterface is not destroyed while executing
+      moveit::planning_interface::MoveGroupInterfacePtr mgi(move_group_);
+      if (mgi && current_plan_)
+      {
+        UiPtr->stop_button->setEnabled(true);
+        bool success = mgi->execute(*current_plan_) == moveit::core::MoveItErrorCode::SUCCESS;
+        // visualize result of execution
+       	if (success)
+        {
+          QString state = UiPtr->looping->isChecked() ? "Executing..." : "Executed";
+          UiPtr->result_label->setText(state);
+        }
+        else
+        {
+          UiPtr->result_label->setText(!ui_->stop_button->isEnabled() ? "Stopped" : "Failed");
+        }
+        // disable stop button
+        UiPtr->stop_button->setEnabled(false);
+      }
+    });
+  });
+  waypoints_tab_->registerPlanAndExecute([=](const std::vector<geometry_msgs::Pose>& Waypoints, Ui::MotionPlanningFrameWaypointsUI* UiPtr)
+  {
+    publishSceneIfNeeded();
+    UiPtr->plan_and_execute_button->setEnabled(false);
+    UiPtr->execute_button->setEnabled(false);
+
+    planning_display_->spawnBackgroundJob([this, &Waypoints, UiPtr]
+    {
+      if (!move_group_)
+      {
+        return;
+      }
+    
+      waypoints_tab_->configureForPlanning(move_group_);
+      configureWorkspace();
+      if (static_cast<bool>(planning_display_))
+      {
+        planning_display_->dropVisualizedTrajectory();
+      }
+      planning_display_->rememberPreviousStartState();
+      // move_group::move() on the server side, will always start from the current state
+      // to suppress a warning, we pass an empty state (which encodes "start from current state")
+      move_group_->setStartStateToCurrentState();
+
+      UiPtr->result_label->setText("Planning...");
+      if (computeCartesianPlan(Waypoints))
+      {
+        UiPtr->execute_button->setEnabled(true);
+        UiPtr->result_label->setText(QString("Time: ").append(QString::number(current_plan_->planning_time_, 'f', 3)));
+
+        // ensures the MoveGroupInterface is not destroyed while executing
+        moveit::planning_interface::MoveGroupInterfacePtr mgi(move_group_);
+        if (mgi && current_plan_)
+        {
+          UiPtr->stop_button->setEnabled(true);
+          bool success = mgi->execute(*current_plan_) == moveit::core::MoveItErrorCode::SUCCESS;
+          // visualize result of execution
+       	  if (success)
+          {
+            UiPtr->result_label->setText("Executed");
+          }
+          else
+          {
+            UiPtr->result_label->setText(!ui_->stop_button->isEnabled() ? "Stopped" : "Failed");
+          }
+          // disable stop button
+          UiPtr->stop_button->setEnabled(false);
+        }
+      }
+      UiPtr->plan_and_execute_button->setEnabled(true);
+    });
+  });
+  waypoints_tab_->registerStop(std::bind(&MotionPlanningFrame::stopButtonClicked, this));
 
   // connect bottons to actions; each action usually registers the function pointer for the actual computation,
   // to keep the GUI more responsive (using the background job processing)
@@ -622,6 +742,12 @@ void MotionPlanningFrame::tabChanged(int index)
     scene_marker_.reset();
   else if (ui_->tabWidget->tabText(index).toStdString() == TAB_OBJECTS)
     selectedCollisionObjectChanged();
+
+  // visual tool for waypoints tab
+  if (ui_->tabWidget->tabText(index).toStdString() == "Waypoints")
+  {
+    waypoints_tab_->setPlanningGroupName(QString::fromStdString(planning_display_->getCurrentPlanningGroup()));
+  }
 }
 
 void MotionPlanningFrame::updateSceneMarkers(float wall_dt, float /*ros_dt*/)

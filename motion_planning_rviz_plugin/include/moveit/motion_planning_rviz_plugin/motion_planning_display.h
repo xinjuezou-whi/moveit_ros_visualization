@@ -146,6 +146,11 @@ public:
   void visualizePlaceLocations(const std::vector<geometry_msgs::PoseStamped>& place_poses);
   std::vector<std::shared_ptr<rviz::Shape> > place_locations_display_;
 
+  // Waypoints
+  void clearWaypointsLocationsDisplay();
+  void visualizeWaypointsLocations(const std::vector<geometry_msgs::PoseStamped>& waypoints_poses);
+  std::vector<std::shared_ptr<rviz::Shape> > waypoints_locations_display_;
+
   std::string getCurrentPlanningGroup() const;
 
   void changePlanningGroup(const std::string& group);

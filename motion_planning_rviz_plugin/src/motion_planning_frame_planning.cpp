@@ -46,6 +46,8 @@
 #include <tf2_eigen/tf2_eigen.h>
 #include <moveit/trajectory_processing/iterative_time_parameterization.h>
 
+#include <tf/LinearMath/Matrix3x3.h>
+
 #include "ui_motion_planning_rviz_plugin_frame.h"
 
 namespace moveit_rviz_plugin
@@ -114,7 +116,6 @@ void MotionPlanningFrame::onClearOctomapClicked()
 
 bool MotionPlanningFrame::computeCartesianPlan()
 {
-  ros::WallTime start = ros::WallTime::now();
   // get goal pose
   moveit::core::RobotState goal = *planning_display_->getQueryGoalState();
   std::vector<geometry_msgs::Pose> waypoints;
@@ -126,6 +127,22 @@ bool MotionPlanningFrame::computeCartesianPlan()
     return false;
   }
   waypoints.push_back(tf2::toMsg(goal.getGlobalLinkTransform(link)));
+  
+#ifdef DEBUG
+  tf::Quaternion quat(waypoints.back().orientation.x, waypoints.back().orientation.y, waypoints.back().orientation.z, waypoints.back().orientation.w);
+  double roll = 0.0, pitch = 0.0, yaw = 0.0;
+  tf::Matrix3x3(quat).getRPY(roll, pitch, yaw);
+  std::cout << "eef position: " << waypoints.back().position.x << " " << waypoints.back().position.y << " " << waypoints.back().position.z << std::endl;
+  std::cout << "eef quaternion: " << waypoints.back().orientation.x << " " << waypoints.back().orientation.y << " " << waypoints.back().orientation.z << " " << waypoints.back().orientation.w << std::endl;
+  std::cout << "eef euler: " << roll << " " << pitch << " " << yaw << std::endl;
+#endif
+
+  return computeCartesianPlan(waypoints);
+}
+
+bool MotionPlanningFrame::computeCartesianPlan(const std::vector<geometry_msgs::Pose>& Waypoints)
+{
+  ros::WallTime start = ros::WallTime::now();
 
   // setup default params
   double cart_step_size = 0.01;
@@ -135,7 +152,7 @@ bool MotionPlanningFrame::computeCartesianPlan()
   // compute trajectory
   moveit_msgs::RobotTrajectory trajectory;
   double fraction =
-      move_group_->computeCartesianPath(waypoints, cart_step_size, cart_jump_thresh, trajectory, avoid_collisions);
+      move_group_->computeCartesianPath(Waypoints, cart_step_size, cart_jump_thresh, trajectory, avoid_collisions);
 
   if (fraction >= 1.0)
   {

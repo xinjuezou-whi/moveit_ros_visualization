@@ -1450,4 +1450,31 @@ void MotionPlanningDisplay::visualizePlaceLocations(const std::vector<geometry_m
   }
 }
 
+// Waypoints
+void MotionPlanningDisplay::clearWaypointsLocationsDisplay()
+{
+  for (auto& it : waypoints_locations_display_)
+  {
+    it.reset();
+  }
+  waypoints_locations_display_.clear();
+}
+
+void MotionPlanningDisplay::visualizeWaypointsLocations(const std::vector<geometry_msgs::PoseStamped>& waypoints_poses)
+{
+  clearWaypointsLocationsDisplay();
+  waypoints_locations_display_.resize(waypoints_poses.size());
+  for (std::size_t i = 0; i < waypoints_poses.size(); ++i)
+  {
+    waypoints_locations_display_[i].reset(new rviz::Shape(rviz::Shape::Cone, context_->getSceneManager()));
+    waypoints_locations_display_[i]->setColor(0.0f, 1.0f, 0.0f, 1.0f);
+    Ogre::Vector3 center(waypoints_poses[i].pose.position.x, waypoints_poses[i].pose.position.y, waypoints_poses[i].pose.position.z);
+    Ogre::Vector3 extents(0.03, 0.03, 0.03);
+    waypoints_locations_display_[i]->setScale(extents);
+    waypoints_locations_display_[i]->setPosition(center);
+    waypoints_locations_display_[i]->setOrientation(Ogre::Quaternion(waypoints_poses[i].pose.orientation.w,
+      waypoints_poses[i].pose.orientation.x, waypoints_poses[i].pose.orientation.y, waypoints_poses[i].pose.orientation.z));
+  }
+}
+
 }  // namespace moveit_rviz_plugin

@@ -82,6 +82,7 @@ namespace moveit_rviz_plugin
 {
 class MotionPlanningDisplay;
 class MotionPlanningFrameJointsWidget;
+class MotionPlanningFrameWaypointsWidget; // forward declaration of waypoints tab
 
 const std::string OBJECT_RECOGNITION_ACTION = "/recognize_objects";
 
@@ -126,6 +127,7 @@ protected:
   rviz::DisplayContext* context_;
   Ui::MotionPlanningUI* ui_;
   MotionPlanningFrameJointsWidget* joints_tab_;
+  MotionPlanningFrameWaypointsWidget* waypoints_tab_;
 
   moveit::planning_interface::MoveGroupInterfacePtr move_group_;
   moveit::semantic_world::SemanticWorldPtr semantic_world_;
@@ -158,6 +160,7 @@ private Q_SLOTS:
 
   // Planning tab
   bool computeCartesianPlan();
+  bool computeCartesianPlan(const std::vector<geometry_msgs::Pose>& Waypoints);
   bool computeJointSpacePlan();
   void planButtonClicked();
   void executeButtonClicked();
