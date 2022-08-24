@@ -49,7 +49,7 @@ public:
   	~MotionPlanningFrameWaypointsWidget() override;
 
 public:
-	void setPlanningGroupName(const QString& Name);
+	void setMoveGroup(moveit::planning_interface::MoveGroupInterfacePtr MoveGroup, const QString& Name);
 	void configureForPlanning(moveit::planning_interface::MoveGroupInterfacePtr MoveGroup);
 	void registerPlan(const PoseUiCallback& Func);
 	void registerExecute(const UiCallback& Func);
@@ -64,12 +64,14 @@ private:
 	void addButtonClicked();
 	void insertButtonClicked();
 	void removeButtonClicked();
+	void fillWaypoint(int RowIndex, bool WithCurrent = false);
     void getWaypoints(std::vector<geometry_msgs::Pose>& Waypoints);
     void visualizeWaypoints();
 
 private:
   	Ui::MotionPlanningFrameWaypointsUI* ui_{ nullptr };
   	MotionPlanningDisplay* planning_display_{ nullptr };
+	moveit::planning_interface::MoveGroupInterfacePtr move_group_{ nullptr };
 	PoseUiCallback func_plan_{ nullptr };
 	UiCallback func_execute_{ nullptr };
 	PoseUiCallback func_plan_and_execute_{ nullptr };
