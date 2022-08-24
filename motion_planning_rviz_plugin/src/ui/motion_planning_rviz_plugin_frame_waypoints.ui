@@ -458,7 +458,7 @@ This is usually achieved by random seeding, which can flip the robot configurati
               <item>
                <widget class="QPushButton" name="insert_point_button">
                 <property name="text">
-                 <string>insert</string>
+                 <string>Insert</string>
                 </property>
                </widget>
               </item>
