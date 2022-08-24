@@ -128,7 +128,7 @@ bool MotionPlanningFrame::computeCartesianPlan()
     return false;
   }
   waypoints.push_back(tf2::toMsg(goal.getGlobalLinkTransform(link)));
-  
+
 #ifdef DEBUG
   tf::Quaternion quat(waypoints.back().orientation.x, waypoints.back().orientation.y, waypoints.back().orientation.z, waypoints.back().orientation.w);
   double roll = 0.0, pitch = 0.0, yaw = 0.0;

@@ -85,7 +85,7 @@ MotionPlanningFrame::MotionPlanningFrame(MotionPlanningDisplay* pdisplay, rviz::
   // tab waypoints
   waypoints_tab_ = new MotionPlanningFrameWaypointsWidget(planning_display_, ui_->tabWidget);
   ui_->tabWidget->insertTab(2, waypoints_tab_, "Waypoints");
-  waypoints_tab_->setPlanningGroupName(QString::fromStdString(planning_display_->getCurrentPlanningGroup()));
+  waypoints_tab_->setMoveGroup(move_group_, QString::fromStdString(planning_display_->getCurrentPlanningGroup()));
   // register plan and execute related functions
   waypoints_tab_->registerPlan([=](const std::vector<geometry_msgs::Pose>& Waypoints, Ui::MotionPlanningFrameWaypointsUI* UiPtr)
   {
@@ -704,7 +704,7 @@ void MotionPlanningFrame::tabChanged(int index)
   // visual tool for waypoints tab
   if (ui_->tabWidget->tabText(index).toStdString() == "Waypoints")
   {
-    waypoints_tab_->setPlanningGroupName(QString::fromStdString(planning_display_->getCurrentPlanningGroup()));
+    waypoints_tab_->setMoveGroup(move_group_, QString::fromStdString(planning_display_->getCurrentPlanningGroup()));
   }
 }
 

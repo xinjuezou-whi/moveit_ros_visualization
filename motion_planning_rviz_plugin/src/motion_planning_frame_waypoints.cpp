@@ -18,17 +18,20 @@ All text above must be included in any redistribution.
 #include <tf2_geometry_msgs/tf2_geometry_msgs.h>
 #include <angles/angles.h>
 #include <visualization_msgs/Marker.h>
+#include <tf/LinearMath/Matrix3x3.h>
+#include <tf2_eigen/tf2_eigen.h>
 #include <thread>
 #include <unistd.h>
 #include <sys/types.h>
 #include <pwd.h>
+#include <QtWidgets/QMenu>
 
 namespace moveit_rviz_plugin
 {
 MotionPlanningFrameWaypointsWidget::MotionPlanningFrameWaypointsWidget(MotionPlanningDisplay* display, QWidget* parent)
   : QWidget(parent), ui_(new Ui::MotionPlanningFrameWaypointsUI()), planning_display_(display)
 {
-	std::cout << "\nWHI motion planning waypoints tab VERSION 00.05" << std::endl;
+	std::cout << "\nWHI motion planning waypoints tab VERSION 00.06" << std::endl;
 	std::cout << "Copyright © 2022-2023 Wheel Hub Intelligent Co.,Ltd. All rights reserved\n" << std::endl;
 
 	ui_->setupUi(this);
@@ -48,6 +51,7 @@ MotionPlanningFrameWaypointsWidget::MotionPlanningFrameWaypointsWidget(MotionPla
 	ui_->waypoints_table->setHorizontalHeaderLabels(header);
 	ui_->waypoints_table->horizontalHeader()->setSectionResizeMode(QHeaderView::ResizeToContents);
 	//ui_->waypoints_table->horizontalHeader()->setStretchLastSection(true);
+	ui_->waypoints_table->setContextMenuPolicy(Qt::CustomContextMenu);
 	ui_->groupBox_waypoints->setTitle(QString("Waypoints (0)"));
 
 	// signal
@@ -59,6 +63,22 @@ MotionPlanningFrameWaypointsWidget::MotionPlanningFrameWaypointsWidget(MotionPla
 	connect(ui_->insert_point_button, &QPushButton::clicked, this, [=]() { insertButtonClicked(); });
 	connect(ui_->remove_point_button, &QPushButton::clicked, this, [=]() { removeButtonClicked(); });
 	connect(ui_->waypoints_table, &QTableWidget::cellChanged, this, [=]() { visualizeWaypoints(); });
+	connect(ui_->waypoints_table, &QTableWidget::customContextMenuRequested, this, [=](const QPoint& Pos)
+	{
+        QMenu* menu = new QMenu;
+        auto action = menu->addAction("current");
+        QObject::connect(action, &QAction::triggered, this, [=]()
+		{
+			QTableWidgetItem* item = ui_->waypoints_table->itemAt(Pos);
+
+			fillWaypoint(item->row(), true);
+
+			action->deleteLater();
+            menu->deleteLater();
+        });
+        menu->exec(QCursor::pos());
+        menu->clear();
+    });
 }
 
 MotionPlanningFrameWaypointsWidget::~MotionPlanningFrameWaypointsWidget()
@@ -66,19 +86,24 @@ MotionPlanningFrameWaypointsWidget::~MotionPlanningFrameWaypointsWidget()
 	delete ui_;
 }
 
-void MotionPlanningFrameWaypointsWidget::setPlanningGroupName(const QString& Name)
+void MotionPlanningFrameWaypointsWidget::setMoveGroup(moveit::planning_interface::MoveGroupInterfacePtr MoveGroup, const QString& Name)
 {
+	move_group_ = MoveGroup;
 	ui_->planning_group_name->setText(Name);
 }
 
 void MotionPlanningFrameWaypointsWidget::configureForPlanning(moveit::planning_interface::MoveGroupInterfacePtr MoveGroup)
 {
-	MoveGroup->setStartState(*planning_display_->getQueryStartState());
-	MoveGroup->setJointValueTarget(*planning_display_->getQueryGoalState());
-	MoveGroup->setPlanningTime(ui_->planning_time->value());
-	MoveGroup->setNumPlanningAttempts(ui_->planning_attempts->value());
-	MoveGroup->setMaxVelocityScalingFactor(ui_->velocity_scaling_factor->value());
-	MoveGroup->setMaxAccelerationScalingFactor(ui_->acceleration_scaling_factor->value());
+	move_group_ = MoveGroup;
+	if (move_group_)
+	{
+		move_group_->setStartState(*planning_display_->getQueryStartState());
+		move_group_->setJointValueTarget(*planning_display_->getQueryGoalState());
+		move_group_->setPlanningTime(ui_->planning_time->value());
+		move_group_->setNumPlanningAttempts(ui_->planning_attempts->value());
+		move_group_->setMaxVelocityScalingFactor(ui_->velocity_scaling_factor->value());
+		move_group_->setMaxAccelerationScalingFactor(ui_->acceleration_scaling_factor->value());
+	}
 }
 
 void MotionPlanningFrameWaypointsWidget::registerPlan(const PoseUiCallback& Func)
@@ -161,10 +186,7 @@ void MotionPlanningFrameWaypointsWidget::addButtonClicked()
 {
 	ui_->waypoints_table->blockSignals(true);
 	ui_->waypoints_table->insertRow(ui_->waypoints_table->rowCount());
-	for (int i = 0; i < ui_->waypoints_table->columnCount(); ++i)
-	{
-		ui_->waypoints_table->setItem(ui_->waypoints_table->rowCount() - 1, i, new QTableWidgetItem("0.0"));
-	}
+	fillWaypoint(ui_->waypoints_table->rowCount() - 1, ui_->current->isChecked());
 	ui_->waypoints_table->blockSignals(false);
 	ui_->groupBox_waypoints->setTitle(QString("Waypoints (") + QString::number(ui_->waypoints_table->rowCount()) + QString(")"));
 
@@ -175,10 +197,7 @@ void MotionPlanningFrameWaypointsWidget::insertButtonClicked()
 {
 	ui_->waypoints_table->blockSignals(true);
 	ui_->waypoints_table->insertRow(ui_->waypoints_table->currentRow());
-	for (int i = 0; i < ui_->waypoints_table->columnCount(); ++i)
-	{
-		ui_->waypoints_table->setItem(ui_->waypoints_table->currentRow() - 1, i, new QTableWidgetItem("0.0"));
-	}
+	fillWaypoint(ui_->waypoints_table->currentRow() - 1, ui_->current->isChecked());
 	ui_->waypoints_table->blockSignals(false);
 	ui_->groupBox_waypoints->setTitle(QString("Waypoints (") + QString::number(ui_->waypoints_table->rowCount()) + QString(")"));
 
@@ -191,6 +210,34 @@ void MotionPlanningFrameWaypointsWidget::removeButtonClicked()
 	ui_->groupBox_waypoints->setTitle(QString("Waypoints (") + QString::number(ui_->waypoints_table->rowCount()) + QString(")"));
 
 	visualizeWaypoints();
+}
+
+void MotionPlanningFrameWaypointsWidget::fillWaypoint(int RowIndex, bool WithCurrent/* = false*/)
+{
+	if (WithCurrent && move_group_)
+	{
+		moveit::core::RobotState current = *planning_display_->getQueryStartState();
+		const std::string& link_name = move_group_->getEndEffectorLink();
+  		const moveit::core::LinkModel* link = move_group_->getRobotModel()->getLinkModel(link_name);
+
+		geometry_msgs::Pose currentPose = tf2::toMsg(current.getGlobalLinkTransform(link));
+		ui_->waypoints_table->setItem(RowIndex, 0, new QTableWidgetItem(QString::number(currentPose.position.x)));
+		ui_->waypoints_table->setItem(RowIndex, 1, new QTableWidgetItem(QString::number(currentPose.position.y)));
+		ui_->waypoints_table->setItem(RowIndex, 2, new QTableWidgetItem(QString::number(currentPose.position.z)));
+		tf::Quaternion quat(currentPose.orientation.x, currentPose.orientation.y, currentPose.orientation.z, currentPose.orientation.w);
+  		double roll = 0.0, pitch = 0.0, yaw = 0.0;
+  		tf::Matrix3x3(quat).getRPY(roll, pitch, yaw);
+		ui_->waypoints_table->setItem(RowIndex, 3, new QTableWidgetItem(QString::number(angles::to_degrees(roll))));
+		ui_->waypoints_table->setItem(RowIndex, 4, new QTableWidgetItem(QString::number(angles::to_degrees(pitch))));
+		ui_->waypoints_table->setItem(RowIndex, 5, new QTableWidgetItem(QString::number(angles::to_degrees(yaw))));
+	}
+	else
+	{
+		for (int i = 0; i < ui_->waypoints_table->columnCount(); ++i)
+		{
+			ui_->waypoints_table->setItem(RowIndex, i, new QTableWidgetItem("0.0"));
+		}
+	}
 }
 
 void MotionPlanningFrameWaypointsWidget::getWaypoints(std::vector<geometry_msgs::Pose>& Waypoints)
