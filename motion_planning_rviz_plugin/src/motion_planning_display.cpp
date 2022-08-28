@@ -38,6 +38,8 @@
 #include <moveit/robot_interaction/kinematic_options_map.h>
 #include <moveit/rviz_plugin_render_tools/planning_link_updater.h>
 #include <moveit/rviz_plugin_render_tools/robot_state_visualization.h>
+#include <moveit/robot_interaction/interactive_marker_helpers.h>
+#include <interactive_markers/tools.h>
 #include <rviz/visualization_manager.h>
 #include <rviz/robot/robot.h>
 #include <rviz/robot/robot_link.h>
@@ -1449,27 +1451,64 @@ void MotionPlanningDisplay::visualizePlaceLocations(const std::vector<geometry_m
 // Waypoints
 void MotionPlanningDisplay::clearWaypointsLocationsDisplay()
 {
-  for (auto& it : waypoints_locations_display_)
+  for (auto& it : waypoints_marker_)
   {
     it.reset();
   }
-  waypoints_locations_display_.clear();
+  waypoints_marker_.clear();
 }
 
-void MotionPlanningDisplay::visualizeWaypointsLocations(const std::vector<geometry_msgs::PoseStamped>& waypoints_poses)
+void MotionPlanningDisplay::visualizeWaypointsLocations(int InteractiveIndex, const std::vector<geometry_msgs::PoseStamped>& WaypointsPose)
 {
   clearWaypointsLocationsDisplay();
-  waypoints_locations_display_.resize(waypoints_poses.size());
-  for (std::size_t i = 0; i < waypoints_poses.size(); ++i)
+  waypoints_marker_.resize(WaypointsPose.size());
+
+  for (std::size_t i = 0; i < WaypointsPose.size(); ++i)
   {
-    waypoints_locations_display_[i].reset(new rviz::Shape(rviz::Shape::Cone, context_->getSceneManager()));
-    waypoints_locations_display_[i]->setColor(0.0f, 1.0f, 0.0f, 1.0f);
-    Ogre::Vector3 center(waypoints_poses[i].pose.position.x, waypoints_poses[i].pose.position.y, waypoints_poses[i].pose.position.z);
-    Ogre::Vector3 extents(0.03, 0.03, 0.03);
-    waypoints_locations_display_[i]->setScale(extents);
-    waypoints_locations_display_[i]->setPosition(center);
-    waypoints_locations_display_[i]->setOrientation(Ogre::Quaternion(waypoints_poses[i].pose.orientation.w,
-      waypoints_poses[i].pose.orientation.x, waypoints_poses[i].pose.orientation.y, waypoints_poses[i].pose.orientation.z));
+    visualization_msgs::Marker wayPointMarker;
+    wayPointMarker.type = visualization_msgs::Marker::ARROW;
+    wayPointMarker.action = visualization_msgs::Marker::ADD;
+    wayPointMarker.scale.x = 0.1;
+    wayPointMarker.scale.y = 0.02;
+    wayPointMarker.scale.z = 0.02;
+    wayPointMarker.color.a = 1.0; // don't forget to set the alpha
+    wayPointMarker.color.r = 0.0;
+    wayPointMarker.color.g = 1.0;
+    wayPointMarker.color.b = 0.0;
+
+    visualization_msgs::InteractiveMarkerControl controlMove3d;
+    controlMove3d.always_visible = true;
+    controlMove3d.interaction_mode = visualization_msgs::InteractiveMarkerControl::MOVE_ROTATE_3D;
+    controlMove3d.name = "move";
+    controlMove3d.markers.push_back(wayPointMarker);
+
+    visualization_msgs::InteractiveMarker imarker = i == InteractiveIndex ? robot_interaction::make6DOFMarker("marker_scene_object", WaypointsPose[i], wayPointMarker.scale.x) :
+      robot_interaction::makeEmptyInteractiveMarker("marker_scene_object", WaypointsPose[i], wayPointMarker.scale.x);
+    imarker.name = std::to_string(i);
+    imarker.description = imarker.name;
+    imarker.controls.push_back(controlMove3d);
+    interactive_markers::autoComplete(imarker);
+
+    waypoints_marker_[i].reset(new rviz::InteractiveMarker(getSceneNode(), context_));
+    waypoints_marker_[i]->processMessage(imarker);
+    waypoints_marker_[i]->setShowAxes(false);
+
+    // connect signals
+    connect(waypoints_marker_[i].get(), SIGNAL(userFeedback(visualization_msgs::InteractiveMarkerFeedback&)), this,
+      SLOT(interactiveMarkerProcessFeedback(visualization_msgs::InteractiveMarkerFeedback&)));
+  }
+}
+
+void MotionPlanningDisplay::registerWaypointUpdate(const WaypointUpdateCallback& Func)
+{
+  waypoint_update_func_ = Func;
+}
+
+void MotionPlanningDisplay::interactiveMarkerProcessFeedback(visualization_msgs::InteractiveMarkerFeedback& Feedback)
+{
+  if (waypoint_update_func_)
+  {
+    waypoint_update_func_(std::stoi(Feedback.marker_name), Feedback.pose);
   }
 }
 

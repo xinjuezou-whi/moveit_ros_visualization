@@ -31,7 +31,7 @@ namespace moveit_rviz_plugin
 MotionPlanningFrameWaypointsWidget::MotionPlanningFrameWaypointsWidget(MotionPlanningDisplay* display, QWidget* parent)
   : QWidget(parent), ui_(new Ui::MotionPlanningFrameWaypointsUI()), planning_display_(display)
 {
-	std::cout << "\nWHI motion planning waypoints tab VERSION 00.06" << std::endl;
+	std::cout << "\nWHI motion planning waypoints tab VERSION 00.07" << std::endl;
 	std::cout << "Copyright © 2022-2023 Wheel Hub Intelligent Co.,Ltd. All rights reserved\n" << std::endl;
 
 	ui_->setupUi(this);
@@ -44,6 +44,9 @@ MotionPlanningFrameWaypointsWidget::MotionPlanningFrameWaypointsWidget(MotionPla
 		QImage scaled = logo.scaledToHeight(48);
 		ui_->logo_lable->setPixmap(QPixmap::fromImage(scaled));
 	}
+
+    // display
+    planning_display_->registerWaypointUpdate(std::bind(&MotionPlanningFrameWaypointsWidget::updateWaypoint, this, std::placeholders::_1, std::placeholders::_2));
 
 	// widget behaviour
 	QStringList header = { "x", "y", "z", "roll", "pitch", "yaw" };
@@ -62,7 +65,8 @@ MotionPlanningFrameWaypointsWidget::MotionPlanningFrameWaypointsWidget(MotionPla
 	connect(ui_->add_point_button, &QPushButton::clicked, this, [=]() { addButtonClicked(); });
 	connect(ui_->insert_point_button, &QPushButton::clicked, this, [=]() { insertButtonClicked(); });
 	connect(ui_->remove_point_button, &QPushButton::clicked, this, [=]() { removeButtonClicked(); });
-	connect(ui_->waypoints_table, &QTableWidget::cellChanged, this, [=]() { visualizeWaypoints(); });
+	connect(ui_->waypoints_table, &QTableWidget::cellChanged, this, [=](int Row, int Column) { visualizeWaypoints(Row); });
+    connect(ui_->waypoints_table, &QTableWidget::cellClicked, this, [=](int Row, int Column) { visualizeWaypoints(Row); });
 	connect(ui_->waypoints_table, &QTableWidget::customContextMenuRequested, this, [=](const QPoint& Pos)
 	{
         QMenu* menu = new QMenu;
@@ -190,7 +194,7 @@ void MotionPlanningFrameWaypointsWidget::addButtonClicked()
 	ui_->waypoints_table->blockSignals(false);
 	ui_->groupBox_waypoints->setTitle(QString("Waypoints (") + QString::number(ui_->waypoints_table->rowCount()) + QString(")"));
 
-	visualizeWaypoints();
+	visualizeWaypoints(ui_->waypoints_table->rowCount() - 1);
 }
 
 void MotionPlanningFrameWaypointsWidget::insertButtonClicked()
@@ -201,7 +205,7 @@ void MotionPlanningFrameWaypointsWidget::insertButtonClicked()
 	ui_->waypoints_table->blockSignals(false);
 	ui_->groupBox_waypoints->setTitle(QString("Waypoints (") + QString::number(ui_->waypoints_table->rowCount()) + QString(")"));
 
-	visualizeWaypoints();
+	visualizeWaypoints(ui_->waypoints_table->currentRow() - 1);
 }
 
 void MotionPlanningFrameWaypointsWidget::removeButtonClicked()
@@ -209,7 +213,7 @@ void MotionPlanningFrameWaypointsWidget::removeButtonClicked()
 	ui_->waypoints_table->removeRow(ui_->waypoints_table->currentRow());
 	ui_->groupBox_waypoints->setTitle(QString("Waypoints (") + QString::number(ui_->waypoints_table->rowCount()) + QString(")"));
 
-	visualizeWaypoints();
+	visualizeWaypoints(ui_->waypoints_table->rowCount() - 1);
 }
 
 void MotionPlanningFrameWaypointsWidget::fillWaypoint(int RowIndex, bool WithCurrent/* = false*/)
@@ -263,7 +267,7 @@ void MotionPlanningFrameWaypointsWidget::getWaypoints(std::vector<geometry_msgs:
 	}
 }
 
-void MotionPlanningFrameWaypointsWidget::visualizeWaypoints()
+void MotionPlanningFrameWaypointsWidget::visualizeWaypoints(int Row)
 {
 	std::vector<geometry_msgs::Pose> waypoints;
 	getWaypoints(waypoints);
@@ -275,7 +279,23 @@ void MotionPlanningFrameWaypointsWidget::visualizeWaypoints()
 		poseStamped.pose = it;
 		stamped.push_back(poseStamped);
 	}
-	planning_display_->visualizeWaypointsLocations(stamped);
+	planning_display_->visualizeWaypointsLocations(Row, stamped);
+}
+
+void MotionPlanningFrameWaypointsWidget::updateWaypoint(int Index, const geometry_msgs::Pose& Pose)
+{
+	tf::Quaternion quat(Pose.orientation.x, Pose.orientation.y, Pose.orientation.z, Pose.orientation.w);
+	double roll = 0.0, pitch = 0.0, yaw = 0.0;
+	tf::Matrix3x3(quat).getRPY(roll, pitch, yaw);
+
+	ui_->waypoints_table->blockSignals(true);
+	ui_->waypoints_table->setItem(Index, 0, new QTableWidgetItem(QString::number(Pose.position.x)));
+	ui_->waypoints_table->setItem(Index, 1, new QTableWidgetItem(QString::number(Pose.position.y)));
+	ui_->waypoints_table->setItem(Index, 2, new QTableWidgetItem(QString::number(Pose.position.z)));
+	ui_->waypoints_table->setItem(Index, 3, new QTableWidgetItem(QString::number(angles::to_degrees(roll))));
+	ui_->waypoints_table->setItem(Index, 4, new QTableWidgetItem(QString::number(angles::to_degrees(pitch))));
+	ui_->waypoints_table->setItem(Index, 5, new QTableWidgetItem(QString::number(angles::to_degrees(yaw))));
+	ui_->waypoints_table->blockSignals(false);
 }
 }  // namespace moveit_rviz_plugin
 
