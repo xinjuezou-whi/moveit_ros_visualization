@@ -5,9 +5,10 @@ This is a Waypoints planning RViz plugin for MoveIt. I decided to create a tab p
 
 With this tab, user can provide a set of points to plan a go-through trajectory with the Cartesian Space.
 
-![plugin02](https://user-images.githubusercontent.com/72239958/185740142-1f53134a-ce2d-46ec-ba0d-558ae2f1d275.gif)
+![add](https://user-images.githubusercontent.com/72239958/187058845-9a0351a2-b155-47d7-aca6-474426c4ae6b.gif)
 
-![plugin](https://user-images.githubusercontent.com/72239958/185739767-5041dca0-04c3-4a65-ba74-3a68cf683097.gif)
+![plan](https://user-images.githubusercontent.com/72239958/187059205-af3d3d56-36ac-4211-b69f-c6d765478152.gif)
+
 
 ## Note
 Currently, the branch "main" has not been tested yet.
@@ -59,7 +60,8 @@ cd <your_workspace>
 roslaunch panda_moveit_config demo.launch
 ```
 
-![image](https://user-images.githubusercontent.com/72239958/185741656-eb68b2a2-c2f3-4f81-93ec-fd94e88ce453.png)
+![image](https://user-images.githubusercontent.com/72239958/187059302-82aaa6de-dfbc-48b5-bc96-2e7af905b2d3.png)
+
 
 ### Loop execution
 For a real-world arm, given the plan operation is succeed, check the "Loop Execution" and then execute, the arm will repeat the planned trajectory.
@@ -69,7 +71,7 @@ For a real-world arm, given the plan operation is succeed, check the "Loop Execu
 ### Point from current state
 There are two ways to add a point from current state of eef. One is to check the "current" before click "Add" or "Insert" button. And the other is to right-click the added point in waypoints list, then click "current" on pop-up menu.
 
-![waypoints](https://user-images.githubusercontent.com/72239958/186379328-314ab83f-0eac-4147-991d-f4a27af0df88.gif)
+![current](https://user-images.githubusercontent.com/72239958/187059724-b785d26f-bd3f-4a3e-bb08-549417426927.gif)
 
 
 ## Further revisement
