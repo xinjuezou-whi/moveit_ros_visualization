@@ -66,7 +66,9 @@ private:
 	void removeButtonClicked();
 	void fillWaypoint(int RowIndex, bool WithCurrent = false);
     void getWaypoints(std::vector<geometry_msgs::Pose>& Waypoints);
-    void visualizeWaypoints();
+    void visualizeWaypoints(int Row);
+    void updateWaypoint(int Index, const geometry_msgs::Pose& Pose);
+	void mousePressEvent(QMouseEvent* Event) override;
 
 private:
   	Ui::MotionPlanningFrameWaypointsUI* ui_{ nullptr };

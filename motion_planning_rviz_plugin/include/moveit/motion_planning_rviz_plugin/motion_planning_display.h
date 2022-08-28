@@ -148,11 +148,13 @@ public:
 
   // Waypoints
   void clearWaypointsLocationsDisplay();
-  void visualizeWaypointsLocations(const std::vector<geometry_msgs::PoseStamped>& waypoints_poses);
-  std::vector<std::shared_ptr<rviz::Shape> > waypoints_locations_display_;
+  void visualizeWaypointsLocations(int InteractiveIndex, const std::vector<geometry_msgs::PoseStamped>& WaypointsPose);
+  std::vector<std::shared_ptr<rviz::InteractiveMarker>> waypoints_marker_;
+  using WaypointUpdateCallback = std::function<void(int, const geometry_msgs::Pose&)>;
+  WaypointUpdateCallback waypoint_update_func_{ nullptr };
+  void registerWaypointUpdate(const WaypointUpdateCallback& Func);
 
   std::string getCurrentPlanningGroup() const;
-
   void changePlanningGroup(const std::string& group);
 
   void addStatusText(const std::string& text);
@@ -193,6 +195,7 @@ private Q_SLOTS:
   void changedWorkspace();
   void resetInteractiveMarkers();
   void motionPanelVisibilityChange(bool enable);
+  void interactiveMarkerProcessFeedback(visualization_msgs::InteractiveMarkerFeedback& Feedback);
 
 protected:
   enum LinkDisplayStatus
