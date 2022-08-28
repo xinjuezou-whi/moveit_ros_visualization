@@ -297,5 +297,16 @@ void MotionPlanningFrameWaypointsWidget::updateWaypoint(int Index, const geometr
 	ui_->waypoints_table->setItem(Index, 5, new QTableWidgetItem(QString::number(angles::to_degrees(yaw))));
 	ui_->waypoints_table->blockSignals(false);
 }
+
+void MotionPlanningFrameWaypointsWidget::mousePressEvent(QMouseEvent* Event)
+{
+	if (Event->button() == Qt::LeftButton)
+	{
+		if (ui_->waypoints_table->itemAt(Event->pos()) == nullptr)
+		{
+			visualizeWaypoints(-1);
+		}
+    }
+}
 }  // namespace moveit_rviz_plugin
 
