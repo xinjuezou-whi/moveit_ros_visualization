@@ -1,7 +1,7 @@
 # moveit_ros_visualization
 This is a Waypoints planning RViz plugin for MoveIt. I decided to create a tab page within "MotionPlanning" plugin rather then to create a separate panel is because the latter solution will take further more space of RViz's window. More over as a tab page, its implementation can take the advantages of reusing the existing facilities.
 
-![image](https://user-images.githubusercontent.com/72239958/185739812-f6e00347-55e9-4fea-97fb-9e11d910a7a4.png)
+![image](https://user-images.githubusercontent.com/72239958/187060058-7f4d7297-3ea2-4388-81ed-683e3526e76d.png)
 
 With this tab, user can provide a set of points to plan a go-through trajectory with the Cartesian Space.
 
