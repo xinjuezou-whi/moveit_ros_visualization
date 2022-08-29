@@ -22,6 +22,8 @@ Changelog:
 #include <QWidget>
 #include <vector>
 #include <memory>
+#include <mutex>
+#include <condition_variable>
 
 #include "ui_motion_planning_rviz_plugin_frame_waypoints.h"
 
@@ -55,6 +57,7 @@ public:
 	void registerExecute(const UiCallback& Func);
 	void registerPlanAndExecute(const PoseUiCallback& Func);
 	void registerStop(const NullCallback& Func);
+	void notifyCv();
 
 private:
 	void planButtonClicked();
@@ -78,6 +81,8 @@ private:
 	UiCallback func_execute_{ nullptr };
 	PoseUiCallback func_plan_and_execute_{ nullptr };
 	NullCallback func_stop_{ nullptr };
+	std::condition_variable cv_;
+	std::mutex mtx_;
 };
 }  // namespace moveit_rviz_plugin
 

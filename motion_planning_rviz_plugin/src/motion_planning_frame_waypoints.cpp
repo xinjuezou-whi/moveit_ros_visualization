@@ -31,7 +31,7 @@ namespace moveit_rviz_plugin
 MotionPlanningFrameWaypointsWidget::MotionPlanningFrameWaypointsWidget(MotionPlanningDisplay* display, QWidget* parent)
   : QWidget(parent), ui_(new Ui::MotionPlanningFrameWaypointsUI()), planning_display_(display)
 {
-	std::cout << "\nWHI motion planning waypoints tab VERSION 00.08" << std::endl;
+	std::cout << "\nWHI motion planning waypoints tab VERSION 00.09" << std::endl;
 	std::cout << "Copyright © 2022-2023 Wheel Hub Intelligent Co.,Ltd. All rights reserved\n" << std::endl;
 
 	ui_->setupUi(this);
@@ -153,10 +153,12 @@ void MotionPlanningFrameWaypointsWidget::executeButtonClicked()
 				{
 					func_execute_(ui_);
 					
-					do
-					{					
-						std::this_thread::sleep_for(std::chrono::milliseconds(500));
-					} while (ui_->stop_button->isEnabled());
+    				// wait until execution finished
+    				std::unique_lock<std::mutex> lk(mtx_);
+    				cv_.wait(lk);
+
+					std::this_thread::sleep_for(std::chrono::milliseconds(400));
+					lk.unlock();
 				}
 			} }.detach();
 		}
@@ -311,6 +313,11 @@ void MotionPlanningFrameWaypointsWidget::mousePressEvent(QMouseEvent* Event)
 			visualizeWaypoints(-1);
 		}
     }
+}
+
+void MotionPlanningFrameWaypointsWidget::notifyCv()
+{
+	cv_.notify_one();
 }
 }  // namespace moveit_rviz_plugin
 
