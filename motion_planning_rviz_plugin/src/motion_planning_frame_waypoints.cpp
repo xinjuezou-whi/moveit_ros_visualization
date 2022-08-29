@@ -31,7 +31,7 @@ namespace moveit_rviz_plugin
 MotionPlanningFrameWaypointsWidget::MotionPlanningFrameWaypointsWidget(MotionPlanningDisplay* display, QWidget* parent)
   : QWidget(parent), ui_(new Ui::MotionPlanningFrameWaypointsUI()), planning_display_(display)
 {
-	std::cout << "\nWHI motion planning waypoints tab VERSION 00.07" << std::endl;
+	std::cout << "\nWHI motion planning waypoints tab VERSION 00.08" << std::endl;
 	std::cout << "Copyright © 2022-2023 Wheel Hub Intelligent Co.,Ltd. All rights reserved\n" << std::endl;
 
 	ui_->setupUi(this);
@@ -66,7 +66,7 @@ MotionPlanningFrameWaypointsWidget::MotionPlanningFrameWaypointsWidget(MotionPla
 	connect(ui_->insert_point_button, &QPushButton::clicked, this, [=]() { insertButtonClicked(); });
 	connect(ui_->remove_point_button, &QPushButton::clicked, this, [=]() { removeButtonClicked(); });
 	connect(ui_->waypoints_table, &QTableWidget::cellChanged, this, [=](int Row, int Column) { visualizeWaypoints(Row); });
-    connect(ui_->waypoints_table, &QTableWidget::cellClicked, this, [=](int Row, int Column) { visualizeWaypoints(Row); });
+    connect(ui_->waypoints_table, &QTableWidget::currentCellChanged, this, [=](int Row, int Column) { visualizeWaypoints(Row); });
 	connect(ui_->waypoints_table, &QTableWidget::customContextMenuRequested, this, [=](const QPoint& Pos)
 	{
         QMenu* menu = new QMenu;
@@ -194,7 +194,7 @@ void MotionPlanningFrameWaypointsWidget::addButtonClicked()
 	ui_->waypoints_table->blockSignals(false);
 	ui_->groupBox_waypoints->setTitle(QString("Waypoints (") + QString::number(ui_->waypoints_table->rowCount()) + QString(")"));
 
-	visualizeWaypoints(ui_->waypoints_table->rowCount() - 1);
+	ui_->waypoints_table->setCurrentCell(ui_->waypoints_table->rowCount() - 1, 0);
 }
 
 void MotionPlanningFrameWaypointsWidget::insertButtonClicked()
@@ -205,15 +205,19 @@ void MotionPlanningFrameWaypointsWidget::insertButtonClicked()
 	ui_->waypoints_table->blockSignals(false);
 	ui_->groupBox_waypoints->setTitle(QString("Waypoints (") + QString::number(ui_->waypoints_table->rowCount()) + QString(")"));
 
-	visualizeWaypoints(ui_->waypoints_table->currentRow() - 1);
+	ui_->waypoints_table->setCurrentCell(ui_->waypoints_table->currentRow() - 1, 0);
 }
 
 void MotionPlanningFrameWaypointsWidget::removeButtonClicked()
 {
+	int highlightRow = ui_->waypoints_table->currentRow() == ui_->waypoints_table->rowCount() - 1 ? ui_->waypoints_table->rowCount() - 2 : ui_->waypoints_table->currentRow();
+	ui_->waypoints_table->blockSignals(true);
 	ui_->waypoints_table->removeRow(ui_->waypoints_table->currentRow());
+	ui_->waypoints_table->blockSignals(false);
 	ui_->groupBox_waypoints->setTitle(QString("Waypoints (") + QString::number(ui_->waypoints_table->rowCount()) + QString(")"));
 
-	visualizeWaypoints(ui_->waypoints_table->rowCount() - 1);
+	ui_->waypoints_table->setCurrentCell(highlightRow, 0);
+	visualizeWaypoints(highlightRow);
 }
 
 void MotionPlanningFrameWaypointsWidget::fillWaypoint(int RowIndex, bool WithCurrent/* = false*/)
