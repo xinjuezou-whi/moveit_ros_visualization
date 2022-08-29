@@ -145,6 +145,8 @@ MotionPlanningFrame::MotionPlanningFrame(MotionPlanningDisplay* pdisplay, rviz::
         }
         // disable stop button
         UiPtr->stop_button->setEnabled(false);
+
+        waypoints_tab_->notifyCv();
       }
     });
   });
