@@ -71,7 +71,7 @@ For a real-world arm, given the plan operation is succeed, check the "Loop Execu
 ### Point from current state
 There are two ways to add a point from current state of eef. One is to check the "current" before click "Add" or "Insert" button. And the other is to right-click the added point in waypoints list, then click "current" on pop-up menu.
 
-![current](https://user-images.githubusercontent.com/72239958/187059724-b785d26f-bd3f-4a3e-bb08-549417426927.gif)
+![current](https://user-images.githubusercontent.com/72239958/187113811-fabbd8dd-0496-4244-b3f0-ac26793ddeef.gif)
 
 
 ## Further revisement
