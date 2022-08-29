@@ -1487,7 +1487,7 @@ void MotionPlanningDisplay::visualizeWaypointsLocations(int InteractiveIndex, co
 
     visualization_msgs::InteractiveMarker imarker = i == InteractiveIndex ? robot_interaction::make6DOFMarker("marker_scene_object", WaypointsPose[i], wayPointMarker.scale.x) :
       robot_interaction::makeEmptyInteractiveMarker("marker_scene_object", WaypointsPose[i], wayPointMarker.scale.x);
-    imarker.name = std::to_string(i);
+    imarker.name = std::to_string(i + 1);
     imarker.description = imarker.name;
     imarker.controls.push_back(controlMove3d);
     interactive_markers::autoComplete(imarker);
@@ -1511,7 +1511,7 @@ void MotionPlanningDisplay::interactiveMarkerProcessFeedback(visualization_msgs:
 {
   if (waypoint_update_func_)
   {
-    waypoint_update_func_(std::stoi(Feedback.marker_name), Feedback.pose);
+    waypoint_update_func_(std::stoi(Feedback.marker_name) - 1, Feedback.pose);
   }
 }
 
