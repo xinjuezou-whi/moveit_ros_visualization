@@ -1468,9 +1468,9 @@ void MotionPlanningDisplay::visualizeWaypointsLocations(int InteractiveIndex, co
     visualization_msgs::Marker wayPointMarker;
     wayPointMarker.type = visualization_msgs::Marker::ARROW;
     wayPointMarker.action = visualization_msgs::Marker::ADD;
-    wayPointMarker.scale.x = 0.1;
-    wayPointMarker.scale.y = 0.02;
-    wayPointMarker.scale.z = 0.02;
+    wayPointMarker.scale.x = 0.05;
+    wayPointMarker.scale.y = 0.01;
+    wayPointMarker.scale.z = 0.01;
     wayPointMarker.color.a = 1.0; // don't forget to set the alpha
     wayPointMarker.color.r = 0.0;
     wayPointMarker.color.g = 1.0;
@@ -1482,7 +1482,7 @@ void MotionPlanningDisplay::visualizeWaypointsLocations(int InteractiveIndex, co
     controlMove3d.name = "move";
     controlMove3d.markers.push_back(wayPointMarker);
 
-    visualization_msgs::InteractiveMarker imarker = i == InteractiveIndex ? robot_interaction::make6DOFMarker("marker_scene_object", WaypointsPose[i], wayPointMarker.scale.x) :
+    visualization_msgs::InteractiveMarker imarker = i == InteractiveIndex ? robot_interaction::make6DOFMarker("marker_scene_object", WaypointsPose[i], 2.0 * wayPointMarker.scale.x) :
       robot_interaction::makeEmptyInteractiveMarker("marker_scene_object", WaypointsPose[i], wayPointMarker.scale.x);
     imarker.name = std::to_string(i + 1);
     imarker.description = imarker.name;
