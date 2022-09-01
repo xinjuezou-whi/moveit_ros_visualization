@@ -10,9 +10,6 @@ With this tab, user can provide a set of points to plan a go-through trajectory 
 ![plan](https://user-images.githubusercontent.com/72239958/187059205-af3d3d56-36ac-4211-b69f-c6d765478152.gif)
 
 
-## Note
-Currently, the branch "main" has not been tested yet.
-
 ## Refactor and Implementation
 | File                                                                  | Plugin          | Class    | Comment                                                                                                    |
 |-----------------------------------------------------------------------|-----------------|----------|------------------------------------------------------------------------------------------------------------|

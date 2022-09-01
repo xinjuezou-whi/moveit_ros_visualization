@@ -27,11 +27,6 @@ Changelog:
 
 #include "ui_motion_planning_rviz_plugin_frame_waypoints.h"
 
-namespace robot_interaction
-{
-MOVEIT_CLASS_FORWARD(InteractionHandler)
-}
-
 namespace moveit_rviz_plugin
 {
 // forward declaration
