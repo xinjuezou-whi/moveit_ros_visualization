@@ -155,6 +155,7 @@ public:
   void registerWaypointUpdate(const WaypointUpdateCallback& Func);
 
   std::string getCurrentPlanningGroup() const;
+
   void changePlanningGroup(const std::string& group);
 
   void addStatusText(const std::string& text);
