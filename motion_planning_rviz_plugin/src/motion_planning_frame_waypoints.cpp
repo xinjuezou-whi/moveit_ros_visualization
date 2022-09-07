@@ -22,8 +22,6 @@ All text above must be included in any redistribution.
 #include <tf2_eigen/tf2_eigen.h>
 #include <thread>
 #include <unistd.h>
-#include <sys/types.h>
-#include <pwd.h>
 #include <QtWidgets/QMenu>
 
 namespace moveit_rviz_plugin
@@ -37,12 +35,12 @@ MotionPlanningFrameWaypointsWidget::MotionPlanningFrameWaypointsWidget(MotionPla
 	ui_->setupUi(this);
 
 	// WHI logo
-	struct passwd* pw = getpwuid(getuid());
+	boost::filesystem::path path(ros::package::getPath("moveit_ros_visualization"));
 	QImage logo;
-	if (logo.load(QString(pw->pw_dir) + "/catkin_workspace/src/visualization/motion_planning_rviz_plugin/src/icons/whi_logo.png"))
+	if (logo.load(QString(path.string().c_str()) + "/motion_planning_rviz_plugin/src/icons/whi_logo.png"))
 	{
 		QImage scaled = logo.scaledToHeight(48);
-		ui_->logo_lable->setPixmap(QPixmap::fromImage(scaled));
+		ui_->logo_label->setPixmap(QPixmap::fromImage(scaled));
 	}
 
     // display
