@@ -50,6 +50,8 @@ depends on your environment. And do not forget to source your workspace
 source <your_workspace>/devel/setup.bash
 ```
 
+> NOTE: please refer to [ruckig](https://github.com/pantor/ruckig) for its installation if MoveIt source is based on version 1.1.11 which depends on ruckig
+
 ## Usage
 Once the build is finished, the tab "Waypoints" will be loaded following the "Planning" while running the MoveIt launch file. Let's take the panda_moveit_config as an example:
 ```
