@@ -74,7 +74,7 @@ There are two ways to add a point from current goal state of eef. One is to chec
 
 ### Size for interactive markers
 The Interactive Marker Size property in category Waypoints can be used to adjust the marker size of waypoint, if it is too small to be selected:
-
+![marker_size](https://user-images.githubusercontent.com/72239958/219294191-464a107d-dcff-43dd-9d24-b3e5c1e87eca.gif)
 
 ## Further revisement
 1. save waypoints to file, and load them from saved file
