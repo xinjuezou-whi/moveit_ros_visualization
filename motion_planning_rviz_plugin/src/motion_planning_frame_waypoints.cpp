@@ -29,8 +29,8 @@ namespace moveit_rviz_plugin
 MotionPlanningFrameWaypointsWidget::MotionPlanningFrameWaypointsWidget(MotionPlanningDisplay* display, QWidget* parent)
   : QWidget(parent), ui_(new Ui::MotionPlanningFrameWaypointsUI()), planning_display_(display)
 {
-	std::cout << "\nWHI motion planning waypoints tab VERSION 00.09" << std::endl;
-	std::cout << "Copyright © 2022-2023 Wheel Hub Intelligent Co.,Ltd. All rights reserved\n" << std::endl;
+	std::cout << "\nWHI motion planning waypoints tab VERSION 00.10" << std::endl;
+	std::cout << "Copyright © 2022-2024 Wheel Hub Intelligent Co.,Ltd. All rights reserved\n" << std::endl;
 
 	ui_->setupUi(this);
 
@@ -54,6 +54,11 @@ MotionPlanningFrameWaypointsWidget::MotionPlanningFrameWaypointsWidget(MotionPla
 	//ui_->waypoints_table->horizontalHeader()->setStretchLastSection(true);
 	ui_->waypoints_table->setContextMenuPolicy(Qt::CustomContextMenu);
 	ui_->groupBox_waypoints->setTitle(QString("Waypoints (0)"));
+	if (!move_group_)
+	{
+		activate(false);
+		ui_->planning_group_name->setText("not ready");
+	}
 
 	// signal
 	connect(ui_->plan_button, &QPushButton::clicked, this, [=]() { planButtonClicked(); });
@@ -90,8 +95,12 @@ MotionPlanningFrameWaypointsWidget::~MotionPlanningFrameWaypointsWidget()
 
 void MotionPlanningFrameWaypointsWidget::setMoveGroup(moveit::planning_interface::MoveGroupInterfacePtr MoveGroup, const QString& Name)
 {
-	move_group_ = MoveGroup;
-	ui_->planning_group_name->setText(Name);
+	if (MoveGroup)
+	{
+		move_group_ = MoveGroup;
+		activate(true);
+		ui_->planning_group_name->setText(Name);
+	}
 }
 
 void MotionPlanningFrameWaypointsWidget::configureForPlanning(moveit::planning_interface::MoveGroupInterfacePtr MoveGroup)
@@ -224,7 +233,7 @@ void MotionPlanningFrameWaypointsWidget::fillWaypoint(int RowIndex, bool WithCur
 {
 	if (WithCurrent && move_group_)
 	{
-		moveit::core::RobotState current = *planning_display_->getQueryStartState();
+		moveit::core::RobotState current = *planning_display_->getQueryGoalState();
 		const std::string& link_name = move_group_->getEndEffectorLink();
   		const moveit::core::LinkModel* link = move_group_->getRobotModel()->getLinkModel(link_name);
 
@@ -317,5 +326,14 @@ void MotionPlanningFrameWaypointsWidget::notifyCv()
 {
 	cv_.notify_one();
 }
+
+void MotionPlanningFrameWaypointsWidget::activate(bool On)
+{
+	ui_->plan_button->setEnabled(On);
+	ui_->plan_and_execute_button->setEnabled(On);
+	ui_->add_point_button->setEnabled(On);
+	ui_->insert_point_button->setEnabled(On);
+}
+
 }  // namespace moveit_rviz_plugin
 

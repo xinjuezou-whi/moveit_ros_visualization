@@ -83,7 +83,6 @@ MotionPlanningFrame::MotionPlanningFrame(MotionPlanningDisplay* pdisplay, rviz::
   // tab waypoints
   waypoints_tab_ = new MotionPlanningFrameWaypointsWidget(planning_display_, ui_->tabWidget);
   ui_->tabWidget->insertTab(2, waypoints_tab_, "Waypoints");
-  waypoints_tab_->setMoveGroup(move_group_, QString::fromStdString(planning_display_->getCurrentPlanningGroup()));
   // register plan and execute related functions
   waypoints_tab_->registerPlan([=](const std::vector<geometry_msgs::Pose>& Waypoints, Ui::MotionPlanningFrameWaypointsUI* UiPtr)
   {
@@ -201,6 +200,16 @@ MotionPlanningFrame::MotionPlanningFrame(MotionPlanningDisplay* pdisplay, rviz::
     });
   });
   waypoints_tab_->registerStop(std::bind(&MotionPlanningFrame::stopButtonClicked, this));
+  timer_notify_waypoints_ = new QTimer(this);
+  connect(timer_notify_waypoints_, &QTimer::timeout, this, [=]()
+  {
+    if (move_group_)
+    {
+      waypoints_tab_->setMoveGroup(move_group_, QString::fromStdString(planning_display_->getCurrentPlanningGroup()));
+      timer_notify_waypoints_->stop();
+    }
+  });
+  timer_notify_waypoints_->start(100);
 
   // connect bottons to actions; each action usually registers the function pointer for the actual computation,
   // to keep the GUI more responsive (using the background job processing)

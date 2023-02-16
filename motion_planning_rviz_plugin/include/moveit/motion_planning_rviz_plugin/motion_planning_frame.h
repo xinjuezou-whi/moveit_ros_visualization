@@ -39,6 +39,7 @@
 #include <QWidget>
 #include <QTreeWidgetItem>
 #include <QListWidgetItem>
+#include <QTimer>
 
 #ifndef Q_MOC_RUN
 #include <moveit/macros/class_forward.h>
@@ -127,7 +128,8 @@ protected:
   rviz::DisplayContext* context_;
   Ui::MotionPlanningUI* ui_;
   MotionPlanningFrameJointsWidget* joints_tab_;
-  MotionPlanningFrameWaypointsWidget* waypoints_tab_;
+  MotionPlanningFrameWaypointsWidget* waypoints_tab_{ nullptr };
+  QTimer* timer_notify_waypoints_{ nullptr };
 
   moveit::planning_interface::MoveGroupInterfacePtr move_group_;
   moveit::semantic_world::SemanticWorldPtr semantic_world_;

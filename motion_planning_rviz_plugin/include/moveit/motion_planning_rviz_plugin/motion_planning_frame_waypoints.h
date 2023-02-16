@@ -67,6 +67,7 @@ private:
     void visualizeWaypoints(int Row);
     void updateWaypoint(int Index, const geometry_msgs::Pose& Pose);
 	void mousePressEvent(QMouseEvent* Event) override;
+	void activate(bool On);
 
 private:
   	Ui::MotionPlanningFrameWaypointsUI* ui_{ nullptr };
