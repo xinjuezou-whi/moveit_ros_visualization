@@ -29,7 +29,7 @@ namespace moveit_rviz_plugin
 MotionPlanningFrameWaypointsWidget::MotionPlanningFrameWaypointsWidget(MotionPlanningDisplay* display, QWidget* parent)
   : QWidget(parent), ui_(new Ui::MotionPlanningFrameWaypointsUI()), planning_display_(display)
 {
-	std::cout << "\nWHI motion planning waypoints tab VERSION 00.10" << std::endl;
+	std::cout << "\nWHI motion planning waypoints tab VERSION 00.11" << std::endl;
 	std::cout << "Copyright © 2022-2024 Wheel Hub Intelligent Co.,Ltd. All rights reserved\n" << std::endl;
 
 	ui_->setupUi(this);

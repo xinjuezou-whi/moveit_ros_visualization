@@ -150,6 +150,8 @@ public:
   void clearWaypointsLocationsDisplay();
   void visualizeWaypointsLocations(int InteractiveIndex, const std::vector<geometry_msgs::PoseStamped>& WaypointsPose);
   std::vector<std::shared_ptr<rviz::InteractiveMarker>> waypoints_marker_;
+  int current_index_{ 0 };
+  std::vector<geometry_msgs::PoseStamped> waypoints_poses_;
   using WaypointUpdateCallback = std::function<void(int, const geometry_msgs::Pose&)>;
   WaypointUpdateCallback waypoint_update_func_{ nullptr };
   void registerWaypointUpdate(const WaypointUpdateCallback& Func);
@@ -196,6 +198,7 @@ private Q_SLOTS:
   void changedWorkspace();
   void resetInteractiveMarkers();
   void motionPanelVisibilityChange(bool enable);
+  void changedWaypointsMarkerScale();
   void interactiveMarkerProcessFeedback(visualization_msgs::InteractiveMarkerFeedback& Feedback);
 
 protected:
@@ -300,6 +303,7 @@ protected:
   rviz::Property* path_category_;
   rviz::Property* plan_category_;
   rviz::Property* metrics_category_;
+  rviz::Property* waypoints_category_{ nullptr };
 
   rviz::EditableEnumProperty* planning_group_property_;
   rviz::BoolProperty* query_start_state_property_;
@@ -321,6 +325,8 @@ protected:
   rviz::BoolProperty* show_workspace_property_;
 
   rviz::Display* int_marker_display_;
+
+  rviz::FloatProperty* waypoints_marker_scale_property_{ nullptr };
 };
 
 }  // namespace moveit_rviz_plugin

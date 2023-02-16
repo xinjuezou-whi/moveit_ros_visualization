@@ -94,6 +94,7 @@ MotionPlanningDisplay::MotionPlanningDisplay()
   plan_category_ = new rviz::Property("Planning Request", QVariant(), "", this);
   metrics_category_ = new rviz::Property("Planning Metrics", QVariant(), "", this);
   path_category_ = new rviz::Property("Planned Path", QVariant(), "", this);
+  waypoints_category_ = new rviz::Property("Waypoints", QVariant(), "", this);
 
   // Metrics category -----------------------------------------------------------------------------------------
   compute_weight_limit_property_ =
@@ -178,6 +179,13 @@ MotionPlanningDisplay::MotionPlanningDisplay()
   // Start background jobs
   background_process_.setJobUpdateEvent([this](moveit::tools::BackgroundProcessing::JobEvent event,
                                                const std::string& name) { backgroundJobUpdate(event, name); });
+
+  // Waypoints category
+  waypoints_marker_scale_property_ =
+      new rviz::FloatProperty("Interactive Marker Size", 0.0f,
+                              "Specifies scale of the interactive marker for waypoint. 0 is auto scale.",
+                              waypoints_category_, SLOT(changedWaypointsMarkerScale()), this);
+  waypoints_marker_scale_property_->setMin(0.0f);
 }
 
 // ******************************************************************************************
@@ -1465,17 +1473,24 @@ void MotionPlanningDisplay::clearWaypointsLocationsDisplay()
 
 void MotionPlanningDisplay::visualizeWaypointsLocations(int InteractiveIndex, const std::vector<geometry_msgs::PoseStamped>& WaypointsPose)
 {
+  current_index_ = InteractiveIndex;
+  if (&waypoints_poses_ != &WaypointsPose)
+  {
+    waypoints_poses_ = WaypointsPose;
+  }
   clearWaypointsLocationsDisplay();
-  waypoints_marker_.resize(WaypointsPose.size());
+  waypoints_marker_.resize(waypoints_poses_.size());
 
-  for (std::size_t i = 0; i < WaypointsPose.size(); ++i)
+  for (std::size_t i = 0; i < waypoints_poses_.size(); ++i)
   {
     visualization_msgs::Marker wayPointMarker;
     wayPointMarker.type = visualization_msgs::Marker::ARROW;
     wayPointMarker.action = visualization_msgs::Marker::ADD;
-    wayPointMarker.scale.x = 0.05;
-    wayPointMarker.scale.y = 0.01;
-    wayPointMarker.scale.z = 0.01;
+    float scale = waypoints_marker_scale_property_->getFloat();
+    scale = scale < 1e-5 ? 0.1 : scale;
+    wayPointMarker.scale.x = scale;
+    wayPointMarker.scale.y = scale / 5.0;
+    wayPointMarker.scale.z = scale / 5.0;
     wayPointMarker.color.a = 1.0; // don't forget to set the alpha
     wayPointMarker.color.r = 0.0;
     wayPointMarker.color.g = 1.0;
@@ -1487,8 +1502,8 @@ void MotionPlanningDisplay::visualizeWaypointsLocations(int InteractiveIndex, co
     controlMove3d.name = "move";
     controlMove3d.markers.push_back(wayPointMarker);
 
-    visualization_msgs::InteractiveMarker imarker = i == InteractiveIndex ? robot_interaction::make6DOFMarker("marker_scene_object", WaypointsPose[i], 2.0 * wayPointMarker.scale.x) :
-      robot_interaction::makeEmptyInteractiveMarker("marker_scene_object", WaypointsPose[i], wayPointMarker.scale.x);
+    visualization_msgs::InteractiveMarker imarker = i == InteractiveIndex ? robot_interaction::make6DOFMarker("marker_scene_object", waypoints_poses_[i], 2.0 * wayPointMarker.scale.x) :
+      robot_interaction::makeEmptyInteractiveMarker("marker_scene_object", waypoints_poses_[i], wayPointMarker.scale.x);
     imarker.name = std::to_string(i + 1);
     imarker.description = imarker.name;
     imarker.controls.push_back(controlMove3d);
@@ -1515,6 +1530,11 @@ void MotionPlanningDisplay::interactiveMarkerProcessFeedback(visualization_msgs:
   {
     waypoint_update_func_(std::stoi(Feedback.marker_name) - 1, Feedback.pose);
   }
+}
+
+void MotionPlanningDisplay::changedWaypointsMarkerScale()
+{
+  visualizeWaypointsLocations(current_index_, waypoints_poses_); 
 }
 
 }  // namespace moveit_rviz_plugin
