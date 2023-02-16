@@ -67,10 +67,13 @@ For a real-world arm, given the plan operation is succeed, check the "Loop Execu
 
 ![plugin03](https://user-images.githubusercontent.com/72239958/185743085-e0892db0-76ad-49d9-8e7f-62e9640f1486.gif)
 
-### Point from current state
-There are two ways to add a point from current state of eef. One is to check the "current" before click "Add" or "Insert" button. And the other is to right-click the added point in waypoints list, then click "current" on pop-up menu.
+### Point from current goal state
+There are two ways to add a point from current goal state of eef. One is to check the "current" before click "Add" or "Insert" button. And the other is to right-click the added point in waypoints list, then click "current" on pop-up menu.
 
-![current](https://user-images.githubusercontent.com/72239958/187113811-fabbd8dd-0496-4244-b3f0-ac26793ddeef.gif)
+![current_goal](https://user-images.githubusercontent.com/72239958/219290390-f7a66d3d-e026-4436-a98a-be43ab059143.gif)
+
+### Size for interactive markers
+The Interactive Marker Size property in category Waypoints can be used to adjust the marker size of waypoint, if it is too small to be selected:
 
 
 ## Further revisement
