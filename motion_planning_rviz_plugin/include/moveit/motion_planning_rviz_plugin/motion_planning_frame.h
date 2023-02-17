@@ -70,6 +70,7 @@ class DisplayContext;
 namespace Ui
 {
 class MotionPlanningUI;
+class MotionPlanningFrameWaypointsUI;
 }
 
 namespace moveit_warehouse
@@ -128,8 +129,10 @@ protected:
   rviz::DisplayContext* context_;
   Ui::MotionPlanningUI* ui_;
   MotionPlanningFrameJointsWidget* joints_tab_;
+  // waypoints
   MotionPlanningFrameWaypointsWidget* waypoints_tab_{ nullptr };
   QTimer* timer_notify_waypoints_{ nullptr };
+  void execute(Ui::MotionPlanningFrameWaypointsUI* Ui) const;
 
   moveit::planning_interface::MoveGroupInterfacePtr move_group_;
   moveit::semantic_world::SemanticWorldPtr semantic_world_;

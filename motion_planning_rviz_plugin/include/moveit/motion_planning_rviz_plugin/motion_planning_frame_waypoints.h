@@ -52,7 +52,6 @@ public:
 	void registerExecute(const UiCallback& Func);
 	void registerPlanAndExecute(const PoseUiCallback& Func);
 	void registerStop(const NullCallback& Func);
-	void notifyCv();
 
 private:
 	void planButtonClicked();
@@ -77,8 +76,6 @@ private:
 	UiCallback func_execute_{ nullptr };
 	PoseUiCallback func_plan_and_execute_{ nullptr };
 	NullCallback func_stop_{ nullptr };
-	std::condition_variable cv_;
-	std::mutex mtx_;
 	std::vector<geometry_msgs::Pose> waypoints_;
 };
 }  // namespace moveit_rviz_plugin

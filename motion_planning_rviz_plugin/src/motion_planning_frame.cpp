@@ -124,27 +124,7 @@ MotionPlanningFrame::MotionPlanningFrame(MotionPlanningDisplay* pdisplay, rviz::
 
     planning_display_->spawnBackgroundJob([this, UiPtr]
     {
-      // ensures the MoveGroupInterface is not destroyed while executing
-      moveit::planning_interface::MoveGroupInterfacePtr mgi(move_group_);
-      if (mgi && current_plan_)
-      {
-        UiPtr->stop_button->setEnabled(true);
-        bool success = mgi->execute(*current_plan_) == moveit::core::MoveItErrorCode::SUCCESS;
-        // visualize result of execution
-       	if (success)
-        {
-          QString state = UiPtr->looping->isChecked() ? "Executing..." : "Executed";
-          UiPtr->result_label->setText(state);
-        }
-        else
-        {
-          UiPtr->result_label->setText(!ui_->stop_button->isEnabled() ? "Stopped" : "Failed");
-        }
-        // disable stop button
-        UiPtr->stop_button->setEnabled(false);
-
-        waypoints_tab_->notifyCv();
-      }
+      execute(UiPtr);
     });
   });
   waypoints_tab_->registerPlanAndExecute([=](const std::vector<geometry_msgs::Pose>& Waypoints, Ui::MotionPlanningFrameWaypointsUI* UiPtr)
@@ -177,24 +157,7 @@ MotionPlanningFrame::MotionPlanningFrame(MotionPlanningDisplay* pdisplay, rviz::
         UiPtr->execute_button->setEnabled(true);
         UiPtr->result_label->setText(QString("Time: ").append(QString::number(current_plan_->planning_time_, 'f', 3)));
 
-        // ensures the MoveGroupInterface is not destroyed while executing
-        moveit::planning_interface::MoveGroupInterfacePtr mgi(move_group_);
-        if (mgi && current_plan_)
-        {
-          UiPtr->stop_button->setEnabled(true);
-          bool success = mgi->execute(*current_plan_) == moveit::core::MoveItErrorCode::SUCCESS;
-          // visualize result of execution
-       	  if (success)
-          {
-            UiPtr->result_label->setText("Executed");
-          }
-          else
-          {
-            UiPtr->result_label->setText(!ui_->stop_button->isEnabled() ? "Stopped" : "Failed");
-          }
-          // disable stop button
-          UiPtr->stop_button->setEnabled(false);
-        }
+        execute(UiPtr);
       }
       UiPtr->plan_and_execute_button->setEnabled(true);
     });
@@ -756,6 +719,33 @@ void MotionPlanningFrame::updateExternalCommunication()
   if (ui_->allow_external_program->isChecked())
   {
     planning_display_->getRobotInteraction()->toggleMoveInteractiveMarkerTopic(true);
+  }
+}
+
+void MotionPlanningFrame::execute(Ui::MotionPlanningFrameWaypointsUI* Ui) const
+{
+  // ensures the MoveGroupInterface is not destroyed while executing
+  moveit::planning_interface::MoveGroupInterfacePtr mgi(move_group_);
+  if (mgi && current_plan_)
+  {
+    Ui->stop_button->setEnabled(true);
+    do
+    {
+      bool success = mgi->execute(*current_plan_) == moveit::core::MoveItErrorCode::SUCCESS;
+      // visualize result of execution
+      if (success)
+      {
+        QString state = Ui->looping->isChecked() ? "Executing..." : "Executed";
+        Ui->result_label->setText(state);
+      }
+      else
+      {
+        Ui->result_label->setText(!ui_->stop_button->isEnabled() ? "Stopped" : "Failed");
+        Ui->looping->setChecked(false);
+      }
+    } while (Ui->looping->isChecked());
+    // disable stop button
+    Ui->stop_button->setEnabled(false);
   }
 }
 
