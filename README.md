@@ -34,7 +34,7 @@ sudo mv /opt/ros/melodic/lib/libmoveit_motion_planning_rviz_plugin_core.so /opt/
 Then, clone branch "melodic" of this repository to the src folder of your workspace
 ```
 cd <your_workspace>/src
-git clone -b melodic https://github.com/xinjuezou-whi/moveit_ros_visualization.git
+git clone https://github.com/xinjuezou-whi/moveit_ros_visualization.git
 ```
 and build
 ```
