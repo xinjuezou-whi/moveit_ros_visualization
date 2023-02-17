@@ -79,6 +79,7 @@ private:
 	NullCallback func_stop_{ nullptr };
 	std::condition_variable cv_;
 	std::mutex mtx_;
+	std::vector<geometry_msgs::Pose> waypoints_;
 };
 }  // namespace moveit_rviz_plugin
 

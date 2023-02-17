@@ -29,7 +29,7 @@ namespace moveit_rviz_plugin
 MotionPlanningFrameWaypointsWidget::MotionPlanningFrameWaypointsWidget(MotionPlanningDisplay* display, QWidget* parent)
   : QWidget(parent), ui_(new Ui::MotionPlanningFrameWaypointsUI()), planning_display_(display)
 {
-	std::cout << "\nWHI motion planning waypoints tab VERSION 00.11" << std::endl;
+	std::cout << "\nWHI motion planning waypoints tab VERSION 00.12" << std::endl;
 	std::cout << "Copyright © 2022-2024 Wheel Hub Intelligent Co.,Ltd. All rights reserved\n" << std::endl;
 
 	ui_->setupUi(this);
@@ -139,12 +139,22 @@ void MotionPlanningFrameWaypointsWidget::registerStop(const NullCallback& Func)
 
 void MotionPlanningFrameWaypointsWidget::planButtonClicked()
 {
-	std::vector<geometry_msgs::Pose> waypoints;
-	getWaypoints(waypoints);
+	getWaypoints(waypoints_);
 
 	if (func_plan_)
 	{
-		func_plan_(waypoints, ui_);
+#ifdef DEBUG
+		std::cout << "point param of waypoints plan, size " << waypoints_.size() << std::endl;
+		tf::Quaternion quat(waypoints_.back().orientation.x, waypoints_.back().orientation.y, waypoints_.back().orientation.z, waypoints_.back().orientation.w);
+		double roll = 0.0, pitch = 0.0, yaw = 0.0;
+		tf::Matrix3x3(quat).getRPY(roll, pitch, yaw);
+		std::cout << "eef position: " << waypoints_.back().position.x << " " << waypoints_.back().position.y << " " <<
+			waypoints_.back().position.z << std::endl;
+		std::cout << "eef quaternion: " << waypoints_.back().orientation.x << " " << waypoints_.back().orientation.y <<
+			" " << waypoints_.back().orientation.z << " " << waypoints_.back().orientation.w << std::endl;
+		std::cout << "eef euler: " << angles::to_degrees(roll) << " " << angles::to_degrees(pitch) << " " << angles::to_degrees(yaw) << std::endl;
+#endif
+		func_plan_(waypoints_, ui_);
 	}
 }
 
@@ -178,12 +188,11 @@ void MotionPlanningFrameWaypointsWidget::executeButtonClicked()
 
 void MotionPlanningFrameWaypointsWidget::planAndExecuteButtonClicked()
 {
-	std::vector<geometry_msgs::Pose> waypoints;
-	getWaypoints(waypoints);
+	getWaypoints(waypoints_);
 
 	if (func_plan_and_execute_)
 	{
-		func_plan_and_execute_(waypoints, ui_);
+		func_plan_and_execute_(waypoints_, ui_);
 	}
 }
 
@@ -242,6 +251,10 @@ void MotionPlanningFrameWaypointsWidget::fillWaypoint(int RowIndex, bool WithCur
 		ui_->waypoints_table->setItem(RowIndex, 1, new QTableWidgetItem(QString::number(currentPose.position.y)));
 		ui_->waypoints_table->setItem(RowIndex, 2, new QTableWidgetItem(QString::number(currentPose.position.z)));
 		tf::Quaternion quat(currentPose.orientation.x, currentPose.orientation.y, currentPose.orientation.z, currentPose.orientation.w);
+#ifdef DEBUG
+		std::cout << "eef quaternion " << currentPose.orientation.x << "," << currentPose.orientation.y << "," <<
+			currentPose.orientation.z << "," << currentPose.orientation.w << std::endl;
+#endif
   		double roll = 0.0, pitch = 0.0, yaw = 0.0;
   		tf::Matrix3x3(quat).getRPY(roll, pitch, yaw);
 		ui_->waypoints_table->setItem(RowIndex, 3, new QTableWidgetItem(QString::number(angles::to_degrees(roll))));
@@ -259,6 +272,7 @@ void MotionPlanningFrameWaypointsWidget::fillWaypoint(int RowIndex, bool WithCur
 
 void MotionPlanningFrameWaypointsWidget::getWaypoints(std::vector<geometry_msgs::Pose>& Waypoints)
 {
+	Waypoints.clear();
   	for (int i = 0; i < ui_->waypoints_table->rowCount(); ++i)
 	{
 		geometry_msgs::Pose pose;
@@ -273,7 +287,8 @@ void MotionPlanningFrameWaypointsWidget::getWaypoints(std::vector<geometry_msgs:
 
 		pose.orientation = tf2::toMsg(orientation);
 #ifdef DEBUG
-		std::cout << "quaternion from euler " << pose.orientation.x << " " << pose.orientation.y << " " << pose.orientation.z << " " << pose.orientation.w << std::endl;
+		std::cout << "quaternion from euler " << pose.orientation.x << "," << pose.orientation.y << "," <<
+			pose.orientation.z << "," << pose.orientation.w << std::endl;
 #endif
 
 		Waypoints.push_back(pose);

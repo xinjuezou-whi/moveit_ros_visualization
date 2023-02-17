@@ -47,6 +47,7 @@
 #include <moveit/trajectory_processing/iterative_time_parameterization.h>
 
 #include <tf/LinearMath/Matrix3x3.h>
+#include <angles/angles.h>
 
 #include "ui_motion_planning_rviz_plugin_frame.h"
 
@@ -129,12 +130,13 @@ bool MotionPlanningFrame::computeCartesianPlan()
   waypoints.push_back(tf2::toMsg(goal.getGlobalLinkTransform(link)));
   
 #ifdef DEBUG
+  std::cout << "point acquired from eef" << std::endl;
   tf::Quaternion quat(waypoints.back().orientation.x, waypoints.back().orientation.y, waypoints.back().orientation.z, waypoints.back().orientation.w);
   double roll = 0.0, pitch = 0.0, yaw = 0.0;
   tf::Matrix3x3(quat).getRPY(roll, pitch, yaw);
   std::cout << "eef position: " << waypoints.back().position.x << " " << waypoints.back().position.y << " " << waypoints.back().position.z << std::endl;
   std::cout << "eef quaternion: " << waypoints.back().orientation.x << " " << waypoints.back().orientation.y << " " << waypoints.back().orientation.z << " " << waypoints.back().orientation.w << std::endl;
-  std::cout << "eef euler: " << roll << " " << pitch << " " << yaw << std::endl;
+  std::cout << "eef euler: " << angles::to_degrees(roll) << " " << angles::to_degrees(pitch) << " " << angles::to_degrees(yaw) << std::endl;
 #endif
 
   return computeCartesianPlan(waypoints);
@@ -142,6 +144,15 @@ bool MotionPlanningFrame::computeCartesianPlan()
 
 bool MotionPlanningFrame::computeCartesianPlan(const std::vector<geometry_msgs::Pose>& Waypoints)
 {
+#ifdef DEBUG
+  std::cout << "point param of Cartesian, size " << Waypoints.size() << std::endl;
+  tf::Quaternion quat(Waypoints.back().orientation.x, Waypoints.back().orientation.y, Waypoints.back().orientation.z, Waypoints.back().orientation.w);
+  double roll = 0.0, pitch = 0.0, yaw = 0.0;
+  tf::Matrix3x3(quat).getRPY(roll, pitch, yaw);
+  std::cout << "eef position: " << Waypoints.back().position.x << " " << Waypoints.back().position.y << " " << Waypoints.back().position.z << std::endl;
+  std::cout << "eef quaternion: " << Waypoints.back().orientation.x << " " << Waypoints.back().orientation.y << " " << Waypoints.back().orientation.z << " " << Waypoints.back().orientation.w << std::endl;
+  std::cout << "eef euler: " << angles::to_degrees(roll) << " " << angles::to_degrees(pitch) << " " << angles::to_degrees(yaw) << std::endl;
+#endif
   ros::WallTime start = ros::WallTime::now();
 
   // setup default params
