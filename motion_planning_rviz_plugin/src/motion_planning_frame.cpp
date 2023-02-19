@@ -35,6 +35,7 @@
 /* Author: Ioan Sucan */
 
 #include <functional>
+#include <thread>
 
 #include <moveit/common_planning_interface_objects/common_objects.h>
 #include <moveit/motion_planning_rviz_plugin/motion_planning_frame.h>
@@ -743,6 +744,8 @@ void MotionPlanningFrame::execute(Ui::MotionPlanningFrameWaypointsUI* Ui) const
         Ui->result_label->setText(!ui_->stop_button->isEnabled() ? "Stopped" : "Failed");
         Ui->looping->setChecked(false);
       }
+
+      std::this_thread::sleep_for(std::chrono::milliseconds(int(Ui->loop_span->value() * 1000.0)));
     } while (Ui->looping->isChecked());
     // disable stop button
     Ui->stop_button->setEnabled(false);
