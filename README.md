@@ -1,5 +1,5 @@
 # moveit_ros_visualization
-This is a Waypoints planning RViz plugin for MoveIt. I decided to create a tab page within "MotionPlanning" plugin rather then to create a separate panel is because the latter solution will take further more space of RViz's window. More over as a tab page, its implementation can take the advantages of reusing the existing facilities.
+This is a Waypoints planning RViz plugin for MoveIt. I decided to create a tab page within "MotionPlanning" plugin rather than to create a separate panel because the latter solution will take further more space in RViz's window. Moreover, as a tab page, its implementation can take advantage of reusing the existing facilities.
 
 ![image](https://user-images.githubusercontent.com/72239958/187060058-7f4d7297-3ea2-4388-81ed-683e3526e76d.png)
 
@@ -11,27 +11,27 @@ With this tab, user can provide a set of points to plan a go-through trajectory 
 
 
 ## Refactor and Implementation
-| File                                                                  | Plugin          | Class    | Comment                                                                                                    |
-|-----------------------------------------------------------------------|-----------------|----------|------------------------------------------------------------------------------------------------------------|
-| motion_planning_display.h motion_planning_display.cpp                 | motion_planning | refactor | added visualize function for waypoints                                                                     |
-| motion_planning_frame.h motion_planning_frame.cpp                     | motion_planning | refactor | forward declaration of tab waypoints added signal callback of tab waypoints overrided computeCartesianPlan |
-| motion_planning_frame_planning.cpp                                    | motion_planning | refactor | overrided computeCartesianPlan                                                                             |
-| CMakeLists.txt                                                        | motion_planning | refactor | new file's manifest                                                                                        |
-| motion_planning_frame_waypoints.h motion_planning_frame_waypoints.cpp | motion_planning | new      | properties and behaviors of widgets of tab waypoints ux logic                                              |
-| motion_planning_rviz_plugin_frame_waypoints.ui                        | motion_planning | new      | ui from QT Designer                                                                                        |
-| whi_logo.png                                                          | motion_planning | new      | logo image                                                                                                 |
+| File                                                                  | Plugin          | Class    | Comment                                                                                                     |
+|-----------------------------------------------------------------------|-----------------|----------|-------------------------------------------------------------------------------------------------------------|
+| motion_planning_display.h motion_planning_display.cpp                 | motion_planning | refactor | added visualize function for waypoints                                                                      |
+| motion_planning_frame.h motion_planning_frame.cpp                     | motion_planning | refactor | forward declaration of tab waypoints added signal callback of tab waypoints overridden computeCartesianPlan |
+| motion_planning_frame_planning.cpp                                    | motion_planning | refactor | override computeCartesianPlan                                                                               |
+| CMakeLists.txt                                                        | motion_planning | refactor | new file's manifest                                                                                         |
+| motion_planning_frame_waypoints.h motion_planning_frame_waypoints.cpp | motion_planning | new      | properties and behaviors of widgets of tab waypoints ux logic                                               |
+| motion_planning_rviz_plugin_frame_waypoints.ui                        | motion_planning | new      | ui from QT Designer                                                                                         |
+| whi_logo.png                                                          | motion_planning | new      | logo image                                                                                                  |
 
 ## Build
-### MoveIt intalled from source
-By this case, just clone this repository and replace the "visualization", then build.
+### MoveIt installed from source
+In this case, just clone this repository, replace the "visualization, " and then build.
 
-### MoveIt intalled from binary
+### MoveIt installed from binary
 First, neutralize the installed libs: "libmoveit_motion_planning_rviz_plugin.so" and "libmoveit_motion_planning_rviz_plugin_core.so"
 ```
 sudo mv /opt/ros/melodic/lib/libmoveit_motion_planning_rviz_plugin.so /opt/ros/melodic/lib/libmoveit_motion_planning_rviz_plugin.so.bk
 sudo mv /opt/ros/melodic/lib/libmoveit_motion_planning_rviz_plugin_core.so /opt/ros/melodic/lib/libmoveit_motion_planning_rviz_plugin_core.so.bk
 ```
-Then, clone branch "melodic" of this repository to the src folder of your workspace
+Then, clone the branch "melodic" of this repository to the src folder of your workspace
 ```
 cd <your_workspace>/src
 git clone https://github.com/xinjuezou-whi/moveit_ros_visualization.git
@@ -67,15 +67,15 @@ For a real-world arm, given the plan operation is succeed, check the "Loop Execu
 
 ![plugin03](https://user-images.githubusercontent.com/72239958/185743085-e0892db0-76ad-49d9-8e7f-62e9640f1486.gif)
 
-### Point from current goal state
-There are two ways to add a point from current goal state of eef. One is to check the "current" before click "Add" or "Insert" button. And the other is to right-click the added point in waypoints list, then click "current" on pop-up menu.
+### Point from the current goal state
+There are two ways to add a point from the current goal state of eef. One is to check the "current" before clicking the "Add" or "Insert" button. And the other is to right-click the added point in the waypoints list, then click "current" on pop-up menu.
 
 ![current_goal](https://user-images.githubusercontent.com/72239958/219290390-f7a66d3d-e026-4436-a98a-be43ab059143.gif)
 
 ### Size for interactive markers
-The Interactive Marker Size property in category Waypoints can be used to adjust the marker size of waypoint, if it is too small to be selected:
+The Interactive Marker Size property in the category Waypoints can be used to adjust the marker size of waypoint, if it is too small to be selected:
 ![marker_size](https://user-images.githubusercontent.com/72239958/219294191-464a107d-dcff-43dd-9d24-b3e5c1e87eca.gif)
 
-## Further revisement
-1. save waypoints to file, and load them from saved file
+## Further refinement
+1. save waypoints to the file, and load them from the saved file
 2. ...
