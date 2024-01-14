@@ -72,7 +72,7 @@ class StringProperty;
 class BoolProperty;
 class FloatProperty;
 class RosTopicProperty;
-class EditableEnumProperty;
+class EnumProperty;
 class ColorProperty;
 class MovableText;
 }  // namespace rviz
@@ -146,7 +146,7 @@ public:
   void visualizePlaceLocations(const std::vector<geometry_msgs::PoseStamped>& place_poses);
   std::vector<std::shared_ptr<rviz::Shape> > place_locations_display_;
 
-  // Waypoints
+  // waypoints
   void clearWaypointsLocationsDisplay();
   void visualizeWaypointsLocations(int InteractiveIndex, const std::vector<geometry_msgs::PoseStamped>& WaypointsPose);
   std::vector<std::shared_ptr<rviz::InteractiveMarker>> waypoints_marker_;
@@ -198,6 +198,7 @@ private Q_SLOTS:
   void changedWorkspace();
   void resetInteractiveMarkers();
   void motionPanelVisibilityChange(bool enable);
+  // waypoints
   void changedWaypointsMarkerScale();
   void interactiveMarkerProcessFeedback(visualization_msgs::InteractiveMarkerFeedback& Feedback);
 
@@ -303,9 +304,10 @@ protected:
   rviz::Property* path_category_;
   rviz::Property* plan_category_;
   rviz::Property* metrics_category_;
+  // waypoints
   rviz::Property* waypoints_category_{ nullptr };
 
-  rviz::EditableEnumProperty* planning_group_property_;
+  rviz::EnumProperty* planning_group_property_;
   rviz::BoolProperty* query_start_state_property_;
   rviz::BoolProperty* query_goal_state_property_;
   rviz::FloatProperty* query_marker_scale_property_;
@@ -326,6 +328,7 @@ protected:
 
   rviz::Display* int_marker_display_;
 
+  // waypoints
   rviz::FloatProperty* waypoints_marker_scale_property_{ nullptr };
 };
 
